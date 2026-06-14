@@ -1,0 +1,160 @@
+MACI     DFHMSD TYPE=MAP,MODE=INOUT,LANG=COBOL,STORAGE=AUTO,           X
+               TIOAPFX=YES,CTRL=FREEKB,                                X
+               DSATTS=(COLOR,HILIGHT),MAPATTS=(COLOR,HILIGHT)
+
+MACI     DFHMDI SIZE=(24,80),LINE=1,COLUMN=1
+
+         DFHMDF POS=(1,1),LENGTH=80,ATTRB=PROT,                        X
+               INITIAL='-----------------------------------------------X--------
+               --------------------------------'
+
+         DFHMDF POS=(2,20),LENGTH=30,ATTRB=(PROT,BRT),                 X
+               INITIAL='ACCOUNT INFORMATION'
+
+         DFHMDF POS=(2,60),LENGTH=5,ATTRB=PROT,                        X
+               INITIAL='DATE:'
+DATEI    DFHMDF POS=(2,66),LENGTH=10,                                  X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(2,77),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(3,1),LENGTH=80,ATTRB=PROT,                        X
+               INITIAL='-----------------------------------------------X--------
+               --------------------------------'
+
+         DFHMDF POS=(5,5),LENGTH=18,ATTRB=PROT,                        X
+               INITIAL='Account Number   :'
+ACCNOI   DFHMDF POS=(5,24),LENGTH=5,                                   X
+               ATTRB=(UNPROT,IC),HILIGHT=UNDERLINE
+         DFHMDF POS=(5,30),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(5,44),LENGTH=18,ATTRB=PROT,                       X
+               INITIAL='Card Number      :'
+CARDNOI  DFHMDF POS=(5,63),LENGTH=16,                                  X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(5,80),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(7,5),LENGTH=18,ATTRB=PROT,                        X
+               INITIAL='Card Type        :'
+CTYPEI   DFHMDF POS=(7,24),LENGTH=6,                                   X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(7,31),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(7,44),LENGTH=18,ATTRB=PROT,                       X
+               INITIAL='Credit Limit     :'
+CLIMITI  DFHMDF POS=(7,63),LENGTH=8,                                   X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(7,72),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(9,5),LENGTH=18,ATTRB=PROT,                        X
+               INITIAL='Expiry Date      :'
+EXPI     DFHMDF POS=(9,24),LENGTH=5,                                   X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(9,30),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(9,44),LENGTH=18,ATTRB=PROT,                       X
+               INITIAL='Available (OTB)  :'
+OTBI     DFHMDF POS=(9,63),LENGTH=8,                                   X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(9,72),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(11,5),LENGTH=18,ATTRB=PROT,                       X
+               INITIAL='Minimum DUE      :'
+MINDUEI  DFHMDF POS=(11,24),LENGTH=8,                                  X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(11,33),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(11,44),LENGTH=18,ATTRB=PROT,                      X
+               INITIAL='Billing Date     :'
+BILLDTI  DFHMDF POS=(11,63),LENGTH=10,                                 X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(11,74),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(13,5),LENGTH=18,ATTRB=PROT,                       X
+               INITIAL='Current Balance  :'
+CURBALI  DFHMDF POS=(13,24),LENGTH=8,                                  X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(13,33),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(13,44),LENGTH=18,ATTRB=PROT,                      X
+               INITIAL='Payment Due Date :'
+PAYDTI   DFHMDF POS=(13,63),LENGTH=10,                                 X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(13,74),LENGTH=1,ATTRB=ASKIP
+
+
+         DFHMDF POS=(16,5),LENGTH=75,ATTRB=(PROT,BRT),                 X
+               INITIAL='PLAN BALANCES :  |  PRINCIPLE   |   INTEREST  |X  LATE F
+                   LATE FEE  |  TOTAL AMT |'
+
+         DFHMDF POS=(17,1),LENGTH=79,ATTRB=PROT,                       X
+               INITIAL='-----------------------------------------------X--------
+               -------------------------------'
+
+         DFHMDF POS=(18,6),LENGTH=10,ATTRB=(PROT),                     X
+               INITIAL='PURCHASES'
+         DFHMDF POS=(18,22),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+PRI1     DFHMDF POS=(18,25),LENGTH=8,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(18,35),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(18,37),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+INT1     DFHMDF POS=(18,42),LENGTH=6,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(18,49),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(18,51),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+LFE1     DFHMDF POS=(18,56),LENGTH=6,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(18,63),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(18,66),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+TOT1     DFHMDF POS=(18,68),LENGTH=8,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(18,77),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(18,79),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+         DFHMDF POS=(20,5),LENGTH=15,ATTRB=(PROT),                     X
+               INITIAL='CASH WITHDRAWL'
+         DFHMDF POS=(20,22),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+PRI2     DFHMDF POS=(20,25),LENGTH=8,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(20,35),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(20,37),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+INT2     DFHMDF POS=(20,42),LENGTH=6,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(20,49),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(20,51),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+LFE2     DFHMDF POS=(20,56),LENGTH=6,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(20,63),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(20,66),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+TOT2     DFHMDF POS=(20,68),LENGTH=8,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(20,77),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(20,79),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+         DFHMDF POS=(22,9),LENGTH=10,ATTRB=(PROT),                     X
+               INITIAL='EMI'
+         DFHMDF POS=(22,22),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+PRI3     DFHMDF POS=(22,25),LENGTH=8,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(22,35),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(22,37),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+INT3     DFHMDF POS=(22,42),LENGTH=6,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(22,49),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(22,51),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+LFE3     DFHMDF POS=(22,56),LENGTH=6,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(22,63),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(22,66),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+TOT3     DFHMDF POS=(22,68),LENGTH=8,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(22,77),LENGTH=1,ATTRB=ASKIP
+         DFHMDF POS=(22,79),LENGTH=1,ATTRB=(PROT),INITIAL='|'
+
+
+         DFHMDF POS=(24,5),LENGTH=15,ATTRB=PROT,                       X
+               INITIAL='PF3 = Back'
+
+         DFHMDF POS=(24,25),LENGTH=4,ATTRB=(PROT),INITIAL='MSG:'
+MSG      DFHMDF POS=(24,30),LENGTH=30,ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(24,61),LENGTH=1,ATTRB=ASKIP
+
+         DFHMSD TYPE=FINAL
+         END
+

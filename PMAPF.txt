@@ -1,0 +1,579 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. CARDPROG.
+
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+
+       01 WS-DD      PIC 99.
+      *01 WS-MM      PIC 99.
+      *01 WS-YYYY    PIC 9(4).
+       01 CUST-REC.
+          05 PAN-CARD      PIC X(10).
+          05 NAME          PIC X(20).
+          05 DOB           PIC X(10).
+          05 MOBILE        PIC X(10).
+          05 ACC-NO        PIC 9(5).
+          05 CARD-TYPE     PIC X.
+          05 CITY1         PIC X(10).
+          05 INCOME        PIC 9(8).
+          05 FILLER        PIC X(6).
+
+       01 BANK-REC.
+          05 B-ACC-NO      PIC X(5).
+          05 CUST-NAME     PIC X(20).
+          05 CARD-NO       PIC X(16).
+          05 CREDIT-LIMIT  PIC 9(8).
+          05 OTB           PIC 9(8).
+          05 EXPIRE        PIC X(5).
+          05 CVV           PIC X(3).
+          05 PIN           PIC X(4).
+          05 BILL-DATE     PIC X(10).
+          05 CARD-TYPE1    PIC X.
+          05 CARD-STATUS1  PIC X.
+          05 FILLER        PIC X(19).
+
+       01 BIN-REC.
+          05 CITY          PIC X(10).
+          05 MASTER        PIC 9(6).
+          05 VISA          PIC 9(6).
+          05 RUPAY         PIC 9(6).
+          05 FILLER        PIC X(12).
+
+       01 SEQ-REC.
+          05 SEQ-KEY       PIC 9(10).
+          05 SEQ-NUM       PIC 9(5).
+          05 CARD-SEQ      PIC 9(9).
+          05 FILLER        PIC X(6).
+       01 ACC-REC.
+          05 A-ACCNO     PIC 9(5).
+          05 A-PIN       PIC X(4).
+          05 FILLER      PIC X(71) VALUE SPACES.
+       01 ACC-NOL  PIC X(5).
+       01 WS-RESP          PIC S9(8) COMP.
+       01 WS-ACC           PIC 9(5).
+       01 WS-ACC-X         PIC X(5).
+
+       01 WS-INCOME        PIC 9(8).
+       01 WS-LIMIT         PIC 9(8).
+
+       01 WS-BIN           PIC 9(6).
+
+       01 WS-CARD15.
+          05 WS-BIN-PART   PIC 9(6).
+          05 WS-SEQ-PART   PIC 9(9).
+
+      *--- NEW: Character version of 15-digit number for Luhn ---*
+       01 WS-CARD15-X      PIC X(15).
+       01 WS-DIGIT-X       PIC X(1).
+
+       01 WS-CARD          PIC X(16).
+       01 WS-CARD-TYPE-NAME PIC X(10).
+       01 WS-BILL-DATE     PIC X(10).
+       01 WS-TOTAL         PIC 99 VALUE 0.
+       01 WS-DIGIT         PIC 99 VALUE 0.
+       01 WS-CHECK         PIC 9.
+       01 WS-CHECK-X       PIC X(1).
+       01 I                PIC 99.
+
+       01 WS-CVV           PIC X(3).
+       01 WS-EXP           PIC X(5).
+
+       01 WS-ABSTIME       PIC S9(15) COMP-3.
+       01 WS-YYYYMMDD      PIC 9(8).
+       01 WS-YYYY          PIC 9(4).
+       01 WS-MM            PIC 99.
+       01 WS-NXT-MM        PIC 99.
+       01 WS-NXT-YYYY      PIC 9(4).
+       01 WS-NXT-YY        PIC 99.
+       01 WS-MONTH         PIC 9(8).
+       01 WS-CITY          PIC X(10).
+
+       01 WS-ACC-CHAR      PIC X.
+       01 WS-CARD-CHAR     PIC X.
+       01 WS-EXP-CHAR      PIC X.
+      *01 WS-COMMAREA      PIC X(100).
+       01 WS-CA-FLAG       PIC X(10).
+       01 WS-COMMAREA.
+           05 WS-CA-DATA    PIC X(10).
+           05 WS-CA-ACCNO   PIC X(5).
+           05 FILLER        PIC X(85).
+       01 WS-DISPLAY-DATE  PIC X(10).
+       COPY MAPF.
+       COPY MCDG.
+       COPY MSPI.
+       COPY DFHAID.
+
+       LINKAGE SECTION.
+
+       01 DFHCOMMAREA.
+          05 CA-DATA       PIC X(10).
+          05 CA-ACCNO      PIC X(5).
+
+       PROCEDURE DIVISION.
+
+       MAIN-PARA.
+           IF EIBCALEN = 0
+              PERFORM SEND-INITIAL
+           ELSE
+           MOVE DFHCOMMAREA TO WS-COMMAREA
+            EVALUATE WS-CA-DATA
+            WHEN 'PINREADY  '
+            PERFORM PIN-SCREEN
+             WHEN 'PINENTRY  '
+            PERFORM RECEIVE-PIN
+             WHEN OTHER
+              PERFORM RECEIVE-SCREEN
+              PERFORM SEARCH-CUSTOMER
+
+              IF WS-RESP = DFHRESP(NORMAL)
+                 PERFORM SEND-EXISTING
+              ELSE
+                 PERFORM PROCESS-NEW
+              END-IF
+              END-EVALUATE
+           END-IF.
+         GET-DATE.
+            EXEC CICS ASKTIME  ABSTIME(WS-ABSTIME)
+             END-EXEC
+            EXEC CICS FORMATTIME  ABSTIME(WS-ABSTIME)
+             DDMMYYYY(WS-DISPLAY-DATE)
+             DATESEP('/')
+             END-EXEC.
+       SEND-INITIAL.
+           MOVE LOW-VALUES TO MAPFO
+           MOVE SPACES TO MAPFO
+            PERFORM GET-DATE
+            MOVE WS-DISPLAY-DATE TO DATEIO
+           EXEC CICS SEND
+                MAP('MAPF')
+                MAPSET('MAPF')
+                FREEKB
+                ERASE
+           END-EXEC
+
+           EXEC CICS RETURN
+                TRANSID('TAPF')
+                COMMAREA(WS-COMMAREA)
+           END-EXEC.
+
+       RECEIVE-SCREEN.
+
+           EXEC CICS RECEIVE
+                MAP('MAPF')
+                MAPSET('MAPF')
+           END-EXEC
+           MOVE PANII  TO PAN-CARD.
+       SEARCH-CUSTOMER.
+
+           EXEC CICS READ
+                FILE('CUSTMER')
+                INTO(CUST-REC)
+                RIDFLD(PAN-CARD)
+                RESP(WS-RESP)
+           END-EXEC.
+
+       SEND-EXISTING.
+
+           MOVE ACC-NO            TO ACCTFO
+           MOVE 'ACCOUNT EXISTS'  TO STATUSOO
+
+           EXEC CICS SEND
+                MAP('MAPF')
+                MAPSET('MAPF')
+           END-EXEC
+
+           EXEC CICS RETURN
+           END-EXEC.
+
+       PROCESS-NEW.
+      *------------------------------------------------*
+      * READ SEQUENCE FILE
+      *------------------------------------------------*
+
+           MOVE 1000000001 TO SEQ-KEY
+
+           EXEC CICS READ
+                FILE('SEQUEN')
+                INTO(SEQ-REC)
+                RIDFLD(SEQ-KEY)
+                UPDATE
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP NOT = DFHRESP(NORMAL)
+              MOVE 'SEQ FILE ERROR' TO STATUSOO
+              PERFORM SEND-ERROR
+           END-IF
+
+      *------------------------------------------------*
+      * GENERATE ACCOUNT NUMBER
+      *------------------------------------------------*
+
+           MOVE SEQ-NUM TO WS-ACC
+
+           ADD 1 TO SEQ-NUM
+           ADD 1 TO CARD-SEQ
+
+           EXEC CICS REWRITE
+                FILE('SEQUEN')
+                FROM(SEQ-REC)
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP NOT = DFHRESP(NORMAL)
+              MOVE 'SEQ UPDATE ERROR' TO STATUSOO
+              PERFORM SEND-ERROR
+           END-IF
+
+      *------------------------------------------------*
+      * MOVE SCREEN DATA
+      *------------------------------------------------*
+
+           MOVE NAMEII   TO NAME
+           MOVE DOBII    TO DOB
+           MOVE MOBII    TO MOBILE
+           MOVE ADDRII   TO CITY1
+           MOVE INCII    TO WS-INCOME
+           MOVE WS-INCOME TO INCOME
+           MOVE CARDII   TO CARD-TYPE
+
+           MOVE WS-ACC   TO ACC-NO
+
+      *------------------------------------------------*
+      * WRITE CUSTOMER FILE
+      *------------------------------------------------*
+
+           EXEC CICS WRITE
+                FILE('CUSTMER')
+                FROM(CUST-REC)
+                RIDFLD(PAN-CARD)
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP NOT = DFHRESP(NORMAL)
+              MOVE 'CUSTOMER WRITE ERROR' TO STATUSOO
+              PERFORM SEND-ERROR
+           END-IF
+
+      *------------------------------------------------*
+      * READ BIN FILE
+      *------------------------------------------------*
+
+           MOVE CITY1 TO WS-CITY
+
+           EXEC CICS READ
+                FILE('BINFILE')
+                INTO(BIN-REC)
+                RIDFLD(WS-CITY)
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP NOT = DFHRESP(NORMAL)
+              MOVE 'CITY NOT FOUND' TO STATUSOO
+              PERFORM SEND-ERROR
+           END-IF
+
+      *------------------------------------------------*
+      * SELECT BIN
+      *------------------------------------------------*
+
+           EVALUATE CARD-TYPE
+
+              WHEN '1'
+                   MOVE MASTER TO WS-BIN
+                   MOVE 'MASTER' TO WS-CARD-TYPE-NAME
+              WHEN '2'
+                   MOVE VISA TO WS-BIN
+                   MOVE 'VISA' TO WS-CARD-TYPE-NAME
+              WHEN '3'
+                   MOVE RUPAY TO WS-BIN
+                   MOVE 'RUPAY' TO WS-CARD-TYPE-NAME
+              WHEN OTHER
+                   MOVE 'INVALID CARD TYPE' TO STATUSOO
+                   PERFORM SEND-ERROR
+
+           END-EVALUATE
+
+      *------------------------------------------------*
+      * GENERATE CARD NUMBER (LUHN ALGORITHM)
+      *------------------------------------------------*
+
+           MOVE WS-BIN    TO WS-BIN-PART
+           MOVE CARD-SEQ  TO WS-SEQ-PART
+
+      *--- Reset total before calculation ---*
+           MOVE ZERO TO WS-TOTAL
+
+      *--- Move numeric 15-digit to character field for indexing ---*
+           MOVE WS-CARD15 TO WS-CARD15-X
+
+      *--- Loop from position 15 down to 1 ---*
+           PERFORM VARYING I FROM 15 BY -1 UNTIL I < 1
+
+      *---    Extract one character digit at position I ---*
+              MOVE WS-CARD15-X(I:1) TO WS-DIGIT-X
+              MOVE WS-DIGIT-X       TO WS-DIGIT
+
+      *---    Double every odd position (1,3,5,7,9,11,13,15)
+      *---    i.e. positions that will be "second from right"
+      *---    once the 16th check digit is appended ---*
+              IF I = 15 OR I = 13 OR I = 11 OR I = 9 OR
+                 I = 7  OR I = 5  OR I = 3  OR I = 1
+                 MULTIPLY 2 BY WS-DIGIT
+
+                 IF WS-DIGIT > 9
+                    SUBTRACT 9 FROM WS-DIGIT
+                 END-IF
+              END-IF
+
+              ADD WS-DIGIT TO WS-TOTAL
+
+           END-PERFORM
+
+      *--- Calculate check digit ---*
+           DIVIDE WS-TOTAL BY 10
+                  GIVING WS-DIGIT
+                  REMAINDER WS-CHECK
+
+           IF WS-CHECK NOT = 0
+              COMPUTE WS-CHECK = 10 - WS-CHECK
+           END-IF
+
+      *--- Append check digit to form 16-digit card number ---*
+           MOVE WS-CHECK TO WS-CHECK-X
+           STRING WS-CARD15 DELIMITED BY SIZE
+                  WS-CHECK-X  DELIMITED BY SIZE
+           INTO WS-CARD
+           END-STRING
+
+      *------------------------------------------------*
+      * CREDIT LIMIT
+      *------------------------------------------------*
+
+           COMPUTE WS-LIMIT = WS-INCOME * 3
+
+      *------------------------------------------------*
+      * DATE
+      *------------------------------------------------*
+
+           EXEC CICS ASKTIME
+                ABSTIME(WS-ABSTIME)
+           END-EXEC
+
+           EXEC CICS FORMATTIME
+                ABSTIME(WS-ABSTIME)
+                YYYYMMDD(WS-YYYYMMDD)
+           END-EXEC
+
+           MOVE WS-YYYYMMDD(1:4) TO WS-YYYY
+           MOVE WS-YYYYMMDD(5:2) TO WS-MM
+
+           IF WS-MM = 12
+              MOVE 1 TO WS-NXT-MM
+              ADD 1 TO WS-YYYY GIVING WS-NXT-YYYY
+           ELSE
+              ADD 1 TO WS-MM GIVING WS-NXT-MM
+              MOVE WS-YYYY TO WS-NXT-YYYY
+           END-IF
+
+           ADD 5 TO WS-NXT-YYYY
+           MOVE WS-NXT-YYYY(3:2) TO WS-NXT-YY
+           STRING WS-NXT-MM DELIMITED BY SIZE
+                  '/'
+                  WS-NXT-YYYY DELIMITED BY SIZE
+           INTO WS-EXP
+           END-STRING
+
+      *------------------------------------------------*
+      * GENERATE CVV
+      *------------------------------------------------*
+
+           MOVE WS-ACC TO WS-ACC-X
+
+           MOVE WS-ACC-X(1:1) TO WS-ACC-CHAR
+           MOVE WS-CARD(1:1) TO WS-CARD-CHAR
+           MOVE WS-NXT-MM(1:1) TO WS-EXP-CHAR
+
+           STRING WS-ACC-CHAR
+                  WS-CARD-CHAR
+                  WS-EXP-CHAR DELIMITED BY SIZE
+           INTO WS-CVV
+           END-STRING.
+
+      *------------------------------------------------*
+      * BILL DATE
+      *------------------------------------------------*
+
+      *    COMPUTE WS-ABSTIME = WS-ABSTIME + 2592000
+
+      *    EXEC CICS FORMATTIME
+      *         ABSTIME(WS-ABSTIME)
+      *         DDMMYYYY(WS-BILL-DATE)
+      *         DATESEP('/')
+      *    END-EXEC
+      *    MOVE WS-BILL-DATE TO BILL-DATE
+           EXEC CICS ASKTIME
+                ABSTIME(WS-ABSTIME)
+           END-EXEC
+
+           EXEC CICS FORMATTIME
+                ABSTIME(WS-ABSTIME)
+                DDMMYYYY(WS-BILL-DATE)
+                DATESEP('/')
+           END-EXEC
+
+           MOVE WS-BILL-DATE(1:2) TO WS-DD
+           MOVE WS-BILL-DATE(4:2) TO WS-MM
+           MOVE WS-BILL-DATE(7:4) TO WS-YYYY
+
+           IF WS-MM = 12
+              MOVE 1 TO WS-MM
+              ADD 1 TO WS-YYYY
+           ELSE
+             ADD 1 TO WS-MM
+           END-IF
+           STRING WS-DD DELIMITED BY SIZE
+           '/' DELIMITED BY SIZE
+           WS-MM DELIMITED BY SIZE
+           '/' DELIMITED BY SIZE
+           WS-YYYY DELIMITED BY SIZE
+           INTO BILL-DATE
+           END-STRING
+      *------------------------------------------------*
+      * CREATE BANK RECORD
+      *------------------------------------------------*
+
+           MOVE WS-ACC        TO B-ACC-NO
+           MOVE NAME          TO CUST-NAME
+           MOVE WS-CARD       TO CARD-NO
+           MOVE WS-LIMIT      TO CREDIT-LIMIT
+           MOVE WS-LIMIT      TO OTB
+           MOVE WS-EXP        TO EXPIRE
+           MOVE WS-CVV        TO CVV
+
+           MOVE WS-ACC-X(1:4) TO PIN
+
+           MOVE BILLFO        TO BILL-DATE
+           MOVE CARD-TYPE     TO CARD-TYPE1
+           MOVE 'A'           TO CARD-STATUS1
+
+      *------------------------------------------------*
+      * WRITE BANK FILE
+      *------------------------------------------------*
+
+           EXEC CICS WRITE
+                FILE('BANKFILE')
+                FROM(BANK-REC)
+                RIDFLD(B-ACC-NO)
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP NOT = DFHRESP(NORMAL)
+              MOVE 'BANK WRITE ERROR' TO STATUSOO
+              PERFORM SEND-ERROR
+           END-IF
+
+      *------------------------------------------------*
+      * DISPLAY OUTPUT
+      *------------------------------------------------*
+           MOVE LOW-VALUES TO MCDGO
+           MOVE WS-ACC   TO ACCTFO
+           MOVE WS-CARD  TO CARDFO
+           MOVE WS-LIMIT TO LIMTFO
+           MOVE WS-EXP   TO EXPFO
+           MOVE WS-CVV   TO CVVFO
+           MOVE WS-CARD-TYPE-NAME TO TYPEFO
+           MOVE WS-BILL-DATE TO BILLFO
+           MOVE WS-ACC TO ACC-NOL
+           PERFORM GET-DATE
+           MOVE WS-DISPLAY-DATE TO DATEO
+           EXEC CICS SEND
+                MAP('MCDG')
+                MAPSET('MCDG')
+                ERASE
+                FREEKB
+           END-EXEC
+
+           MOVE 'PINREADY  ' TO WS-CA-DATA
+           MOVE WS-ACC       TO WS-CA-ACCNO
+           MOVE WS-COMMAREA TO DFHCOMMAREA
+           EXEC CICS SEND TEXT FROM(WS-ACC) LENGTH(5) END-EXEC
+           EXEC CICS SEND TEXT FROM(WS-CA-ACCNO)LENGTH(5) END-EXEC
+           EXEC CICS RETURN  TRANSID('TAPF')
+           COMMAREA(DFHCOMMAREA)
+           END-EXEC.
+        PIN-SCREEN.
+           MOVE LOW-VALUES TO MSPIO
+           MOVE WS-CA-ACCNO TO ACCNOO
+           PERFORM GET-DATE
+           MOVE WS-DISPLAY-DATE TO DATEO
+           MOVE WS-CA-ACCNO TO ACCNOO
+           MOVE SPACES TO ENTPNI
+           MOVE SPACES TO CONPNI
+           EXEC CICS SEND MAP('MSPI')
+                MAPSET('MSPI')
+                ERASE
+                END-EXEC
+           MOVE 'PINENTRY  ' TO WS-CA-DATA
+           MOVE WS-COMMAREA TO DFHCOMMAREA
+           EXEC CICS RETURN    TRANSID('TAPF')
+             COMMAREA(DFHCOMMAREA)
+              END-EXEC.
+       RECEIVE-PIN.
+           EXEC CICS RECEIVE
+                MAP('MSPI')
+                MAPSET('MSPI')
+           END-EXEC
+           IF EIBAID = DFHPF3
+             EXEC CICS XCTL
+             PROGRAM('PMLG2')
+             END-EXEC
+             END-IF
+           IF ENTPNI = CONPNI
+           MOVE WS-CA-ACCNO  TO ACCNOI
+           MOVE ACCNOI TO A-ACCNO
+           MOVE ENTPNI TO A-PIN
+           EXEC CICS SEND TEXT FROM(ACCNOI) LENGTH(5) END-EXEC
+           EXEC CICS SEND TEXT FROM(WS-CA-ACCNO)LENGTH(5) END-EXEC
+           EXEC CICS WRITE FILE('LOGIN')
+           FROM (ACC-REC)
+           RIDFLD(A-ACCNO)
+           RESP(WS-RESP)
+           END-EXEC
+           IF WS-RESP = DFHRESP(NORMAL)
+           MOVE 'ACCOUNT CREATED SUCCESSFULLY' TO MSGO
+           EXEC CICS SEND MAP('MSPI')
+                MAPSET('MSPI')
+                END-EXEC
+           EXEC CICS RETURN    TRANSID('TAPF')
+             COMMAREA(DFHCOMMAREA)
+              END-EXEC
+           ELSE
+           IF WS-RESP = DFHRESP(DUPREC)
+           MOVE 'ACCOUNT ALREADY EXISTS' TO MSGO
+           ELSE
+           MOVE 'LOGIN WRITE ERROR' TO MSGO
+           END-IF
+           PERFORM PIN-SCREEN
+           END-IF
+           ELSE
+           MOVE 'PIN MISMATCH' TO MSGO
+           PERFORM PIN-SCREEN
+           END-IF
+           IF EIBAID = DFHPF3
+           EXEC CICS XCTL
+                 PROGRAM('PMLG2')
+           END-EXEC
+           END-IF.
+       SEND-ERROR.
+
+           EXEC CICS SEND
+                MAP('MAPF')
+                MAPSET('MAPF')
+           END-EXEC
+
+           EXEC CICS RETURN
+           TRANSID('TAPF')
+           COMMAREA(WS-COMMAREA)
+           END-EXEC.
+

@@ -1,0 +1,650 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. PAYPGM.
+
+       DATA DIVISION.
+
+       WORKING-STORAGE SECTION.
+
+       COPY DFHAID.
+       COPY MPAB.
+
+       01 WS-RESP                PIC S9(8) COMP.
+       01 WS-ABSTIME            PIC S9(15) COMP-3.
+       01 WS-DATE               PIC X(10).
+
+       01 WS-PAY-AMT            PIC 9(10).
+       01 WS-TEMP-AMT           PIC 9(10).
+
+       01 WS-TXN-TYPE           PIC X(4).
+
+       01 WS-DD                 PIC X(2).
+       01 WS-MM                 PIC X(2).
+       01 WS-SEQ                PIC X(2) VALUE '01'.
+
+       01 WS-TXNID.
+          05 WS-TXN-ACC         PIC X(5).
+          05 WS-TXN-DD          PIC X(2).
+          05 WS-TXN-MM          PIC X(2).
+          05 WS-TXN-SEQ         PIC X(2).
+
+      *================================================*
+      * BANK FILE
+      *================================================*
+
+       01 BANK-REC.
+          05 BK-ACCNO           PIC X(5).
+          05 BK-NAME            PIC X(10).
+          05 BK-CARDNO          PIC X(16).
+          05 BK-CURRBAL         PIC 9(8).
+          05 BK-CRLIMIT         PIC 9(8).
+          05 BK-OTB             PIC 9(8).
+          05 BK-EXPIRY          PIC X(5).
+          05 BK-CVV             PIC 9(3).
+          05 BK-DUE-DAYS        PIC X(2).
+          05 BK-MINDUE          PIC 9(8).
+          05 BK-BILLDATE        PIC X(10).
+          05 BK-PAYDATE         PIC X(10).
+          05 BK-CARDTYPE        PIC X(1).
+          05 CARD-STATUS        PIC X.
+          05 FILLER             PIC X(5).
+
+      *================================================*
+      * CARD FILE
+      *================================================*
+
+       01 CARD-REC.
+
+          05 CARDNO             PIC X(16).
+
+          05 PURCHASE-PLAN.
+             10 PUR-PRINC       PIC 9(08).
+             10 PUR-INT         PIC 9(06).
+             10 PUR-LATE        PIC 9(06).
+             10 PUR-TOTAL       PIC 9(08).
+
+          05 CASH-PLAN.
+             10 CASH-PRINC      PIC 9(08).
+             10 CASH-INT        PIC 9(06).
+             10 CASH-LATE       PIC 9(06).
+             10 CASH-TOTAL      PIC 9(08).
+
+          05 EMI-PLAN.
+             10 EMI-PRINC       PIC 9(08).
+             10 EMI-INT         PIC 9(06).
+             10 EMI-LATE        PIC 9(06).
+             10 EMI-TOTAL       PIC 9(08).
+             10 EMI-TENURE      PIC 99.
+          05 CURR-BAL           PIC 9(10).
+
+      *================================================*
+      * TRANSACTION FILE
+      *================================================*
+
+       01 TXN-REC.
+          05 TXN-ID             PIC X(11).
+          05 TXN-DATE           PIC X(8).
+          05 TXN-AMT            PIC 9(10).
+          05 TXN-TYPE           PIC X(4).
+       01 WS-COMMAREA           PIC X(100).
+       LINKAGE SECTION.
+
+       01 DFHCOMMAREA            PIC X(100).
+
+       PROCEDURE DIVISION.
+       MAIN-PARA.
+           MOVE DFHCOMMAREA TO WS-COMMAREA
+           MOVE LOW-VALUES TO MPABO
+
+      *-----------------------------------------*
+      * FIRST TIME
+      *-----------------------------------------*
+
+           IF EIBCALEN = 0
+
+              EXEC CICS ASKTIME
+                   ABSTIME(WS-ABSTIME)
+              END-EXEC
+
+              EXEC CICS FORMATTIME
+                   ABSTIME(WS-ABSTIME)
+                   DDMMYYYY(WS-DATE)
+                   DATESEP('/')
+              END-EXEC
+              MOVE WS-DATE TO DATEIO
+
+              EXEC CICS SEND
+                   MAP('MPAB')
+                   MAPSET('MPAB')
+                   ERASE
+                   FREEKB
+              END-EXEC
+
+              EXEC CICS RETURN
+                   TRANSID('TPAB')
+                   COMMAREA(WS-COMMAREA)
+              END-EXEC
+
+           END-IF
+
+      *-----------------------------------------*
+      * RECEIVE SCREEN
+      *-----------------------------------------*
+
+           EXEC CICS RECEIVE
+                MAP('MPAB')
+                MAPSET('MPAB')
+                INTO(MPABI)
+           END-EXEC
+
+      *-----------------------------------------*
+      * PF3 EXIT
+      *-----------------------------------------*
+
+           IF EIBAID = DFHPF3
+
+              EXEC CICS XCTL
+                   PROGRAM('PMMNU')
+              END-EXEC
+
+           END-IF
+
+      *-----------------------------------------*
+      * READ BANK FILE
+      *-----------------------------------------*
+
+           MOVE ACCNOII TO BK-ACCNO
+
+           EXEC CICS READ
+                FILE('BANKMAS')
+                INTO(BANK-REC)
+                LENGTH(LENGTH OF BANK-REC)
+                RIDFLD(BK-ACCNO)
+                UPDATE
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP NOT = DFHRESP(NORMAL)
+
+              MOVE 'INVALID ACCOUNT'
+                   TO MSGO
+
+              PERFORM SEND-MAP
+
+           END-IF
+           MOVE BK-CURRBAL TO OUTAMTIO
+           MOVE BK-MINDUE  TO MINAMTIO
+           MOVE BK-CARDNO  TO CARDNOIO
+
+      *-----------------------------------------*
+      * VALIDATE CARD DETAILS
+      *-----------------------------------------*
+
+           IF CARDNOII NOT = BK-CARDNO
+
+              MOVE 'INVALID CARD'
+                   TO MSGO
+
+              PERFORM SEND-MAP
+
+           END-IF
+
+           IF EXPII NOT = BK-EXPIRY
+
+              MOVE 'INVALID EXPIRY'
+                   TO MSGO
+
+              PERFORM SEND-MAP
+
+           END-IF
+
+           IF CVVII NOT = BK-CVV
+
+              MOVE 'INVALID CVV'
+                   TO MSGO
+
+              PERFORM SEND-MAP
+
+           END-IF
+
+           IF PAYAMTIL = 0
+              MOVE BK-CURRBAL TO OUTAMTIO
+              MOVE BK-MINDUE  TO MINAMTIO
+              MOVE BK-CARDNO  TO CARDNOIO
+              MOVE 'ENTER PAYMENT AMOUNT' TO MSGO
+              PERFORM SEND-MAP
+           END-IF
+
+      *-----------------------------------------*
+      * READ CARD FILE
+      *-----------------------------------------*
+
+           MOVE BK-CARDNO TO CARDNO
+
+           EXEC CICS READ
+                FILE('CARDMAS')
+                INTO(CARD-REC)
+                LENGTH(LENGTH OF CARD-REC)
+                RIDFLD(CARDNO)
+                UPDATE
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP NOT = DFHRESP(NORMAL)
+
+              MOVE 'CARD DATA NOT FOUND'
+                   TO MSGO
+
+              PERFORM SEND-MAP
+
+           END-IF
+
+      *-----------------------------------------*
+      * PAYMENT AMOUNT
+      *-----------------------------------------*
+
+           MOVE PAYAMTII TO WS-PAY-AMT
+           MOVE WS-PAY-AMT TO WS-TEMP-AMT
+
+      *-----------------------------------------*
+      * FULL PAYMENT
+      *-----------------------------------------*
+
+           IF WS-PAY-AMT = CURR-BAL
+
+              MOVE 'FULL' TO WS-TXN-TYPE
+
+              MOVE 0 TO PUR-PRINC
+              MOVE 0 TO PUR-INT
+              MOVE 0 TO PUR-LATE
+              MOVE 0 TO PUR-TOTAL
+
+              MOVE 0 TO CASH-PRINC
+              MOVE 0 TO CASH-INT
+              MOVE 0 TO CASH-LATE
+              MOVE 0 TO CASH-TOTAL
+
+              MOVE 0 TO EMI-PRINC
+              MOVE 0 TO EMI-INT
+              MOVE 0 TO EMI-LATE
+              MOVE 0 TO EMI-TOTAL
+
+              MOVE 0 TO CURR-BAL
+
+           ELSE
+              IF WS-PAY-AMT = BK-MINDUE
+
+                 MOVE 'MINI' TO WS-TXN-TYPE
+
+      *=========================================*
+      * MINIMUM PAYMENT LOGIC
+      *=========================================*
+
+                 MOVE WS-PAY-AMT TO WS-TEMP-AMT
+
+      *=========================================*
+      * PURCHASE LATE FEE
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= PUR-LATE
+
+                 SUBTRACT PUR-LATE
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO PUR-LATE
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM PUR-LATE
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+
+      *=========================================*
+      * CASH LATE FEE
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= CASH-LATE
+
+                 SUBTRACT CASH-LATE
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO CASH-LATE
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM CASH-LATE
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+
+      *=========================================*
+      * EMI LATE FEE
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= EMI-LATE
+
+                 SUBTRACT EMI-LATE
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO EMI-LATE
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM EMI-LATE
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+
+      *=========================================*
+      * PURCHASE INTEREST
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= PUR-INT
+
+                 SUBTRACT PUR-INT
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO PUR-INT
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM PUR-INT
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+
+      *=========================================*
+      * CASH INTEREST
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= CASH-INT
+
+                 SUBTRACT CASH-INT
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO CASH-INT
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM CASH-INT
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+
+      *=========================================*
+      * EMI INTEREST
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= EMI-INT
+
+                 SUBTRACT EMI-INT
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO EMI-INT
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM EMI-INT
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+
+      *=========================================*
+      * PURCHASE PRINCIPLE
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= PUR-PRINC
+
+                 SUBTRACT PUR-PRINC
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO PUR-PRINC
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM PUR-PRINC
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+
+      *=========================================*
+      * CASH PRINCIPLE
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= CASH-PRINC
+
+                 SUBTRACT CASH-PRINC
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO CASH-PRINC
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM CASH-PRINC
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+
+      *=========================================*
+      * EMI PRINCIPLE
+      *=========================================*
+
+           IF WS-TEMP-AMT > 0
+
+              IF WS-TEMP-AMT >= EMI-PRINC
+
+                 SUBTRACT EMI-PRINC
+                      FROM WS-TEMP-AMT
+
+                 MOVE 0 TO EMI-PRINC
+
+              ELSE
+
+                 SUBTRACT WS-TEMP-AMT
+                      FROM EMI-PRINC
+
+                 MOVE 0 TO WS-TEMP-AMT
+
+              END-IF
+
+           END-IF
+      *=========================================*
+      * RECALCULATE TOTALS
+      *=========================================*
+
+           COMPUTE PUR-TOTAL =
+                   PUR-PRINC +
+                   PUR-INT +
+                   PUR-LATE
+
+           COMPUTE CASH-TOTAL =
+                   CASH-PRINC +
+                   CASH-INT +
+                   CASH-LATE
+
+           COMPUTE EMI-TOTAL =
+                   EMI-PRINC +
+                   EMI-INT +
+                   EMI-LATE
+
+      *=========================================*
+      * CURRENT BALANCE
+      *=========================================*
+
+           COMPUTE CURR-BAL =
+                   PUR-TOTAL +
+                   CASH-TOTAL +
+                   EMI-TOTAL
+           ELSE
+                 MOVE 'PAY FULL OR MINIMUM DUE ONLY' TO MSGO
+                 PERFORM SEND-MAP
+           END-IF
+           END-IF
+      *-----------------------------------------*
+      * UPDATE BANK FILE
+      *-----------------------------------------*
+
+           MOVE CURR-BAL TO BK-CURRBAL
+
+           COMPUTE BK-OTB =
+                   BK-CRLIMIT - BK-CURRBAL
+
+           COMPUTE BK-MINDUE =
+                   BK-CURRBAL / 10
+
+      *-----------------------------------------*
+      * GET DATE
+      *-----------------------------------------*
+
+           EXEC CICS ASKTIME
+                ABSTIME(WS-ABSTIME)
+           END-EXEC
+
+           EXEC CICS FORMATTIME
+                ABSTIME(WS-ABSTIME)
+                DDMMYYYY(WS-DATE)
+                DATESEP('/')
+           END-EXEC
+
+           MOVE WS-DATE TO BK-PAYDATE
+
+      *-----------------------------------------*
+      * BUILD TRANSACTION ID
+      *-----------------------------------------*
+
+           MOVE WS-DATE(1:2) TO WS-DD
+           MOVE WS-DATE(4:2) TO WS-MM
+
+           MOVE BK-ACCNO TO WS-TXN-ACC
+           MOVE WS-DD    TO WS-TXN-DD
+           MOVE WS-MM    TO WS-TXN-MM
+           MOVE WS-SEQ   TO WS-TXN-SEQ
+
+           MOVE WS-TXNID TO TXN-ID
+
+      *-----------------------------------------*
+      * BUILD TRANSACTION RECORD
+      *-----------------------------------------*
+
+           MOVE WS-DATE(1:2) TO TXN-DATE(1:2)
+           MOVE WS-DATE(4:2) TO TXN-DATE(3:2)
+           MOVE WS-DATE(7:4) TO TXN-DATE(5:4)
+
+           MOVE WS-PAY-AMT  TO TXN-AMT
+           MOVE WS-TXN-TYPE TO TXN-TYPE
+
+      *-----------------------------------------*
+      * WRITE TRANSACTION FILE
+      *-----------------------------------------*
+
+           EXEC CICS WRITE
+                FILE('TRNFILE')
+                FROM(TXN-REC)
+                RIDFLD(TXN-ID)
+                LENGTH(LENGTH OF TXN-REC)
+                RESP(WS-RESP)
+           END-EXEC
+
+      *-----------------------------------------*
+      * REWRITE CARD FILE
+      *-----------------------------------------*
+
+           EXEC CICS REWRITE
+                FILE('CARDMAS')
+                FROM(CARD-REC)
+                LENGTH(LENGTH OF CARD-REC)
+                RESP(WS-RESP)
+           END-EXEC
+
+      *-----------------------------------------*
+      * REWRITE BANK FILE
+      *-----------------------------------------*
+
+           EXEC CICS REWRITE
+                FILE('BANKMAS')
+                FROM(BANK-REC)
+                LENGTH(LENGTH OF BANK-REC)
+                RESP(WS-RESP)
+           END-EXEC
+
+           MOVE 'PAYMENT SUCCESS'
+                TO MSGO
+
+           PERFORM SEND-MAP.
+
+      *================================================*
+      * SEND MAP
+      *================================================*
+
+       SEND-MAP.
+
+           EXEC CICS ASKTIME
+                ABSTIME(WS-ABSTIME)
+           END-EXEC
+
+           EXEC CICS FORMATTIME
+                ABSTIME(WS-ABSTIME)
+                DDMMYYYY(WS-DATE)
+                DATESEP('/')
+           END-EXEC
+           MOVE WS-DATE TO DATEIO
+
+           EXEC CICS SEND
+                MAP('MPAB')
+                MAPSET('MPAB')
+                FREEKB
+           END-EXEC
+
+           EXEC CICS RETURN
+                TRANSID('TPAB')
+                COMMAREA(WS-COMMAREA)
+           END-EXEC.
+

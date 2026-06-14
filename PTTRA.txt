@@ -1,0 +1,353 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. PTTRA.
+
+       DATA DIVISION.
+
+       WORKING-STORAGE SECTION.
+       01 WS-ABSTIME       PIC X(10).
+       01 WS-RESP          PIC S9(8) COMP.
+       01 WS-AMT1          PIC 9(6).
+       01 WS-TENURE1       PIC 9(1).
+       01 WS-ACCNO2        PIC X(05).
+       01 WS-TXNID         PIC X(11).
+       01 WS-DATE1         PIC X(10).
+       01 EOG              PIC X.
+       01 WS-DATE.
+          05 WS-DD         PIC XX.
+          05 FILLER        PIC X VALUE '/'.
+          05 WS-MM         PIC XX.
+          05 FILLER        PIC X VALUE '/'.
+          05 WS-YYYY       PIC XXXX.
+       01 WS-COUNT         PIC 99 VALUE 1.
+       01 WS-SEQ           PIC 99.
+      *LUHN-CHECK DATANAMES
+       01  CHECK-NUM               PIC 9(16).
+       01  I                       PIC 99 VALUE 0.
+       01  J                       PIC 99 VALUE 15.
+       01  K                       PIC 99 VALUE 2.
+       01  SINGLE                  PIC 99.
+       01  DOUBLE                  PIC 99.
+       01  LEFT-SUM                PIC 99.
+       01  RIGHT-SUM               PIC 99.
+       01  LUHN-SUM                PIC 99.
+       01  LUHN-CHECK              PIC 9.
+       01  LUHN-VALID              PIC X(10) VALUE 'VALID CARD'.
+       01  LUHN-INVALID            PIC X(12) VALUE 'INVALID CARD'.
+      * FILE RECORD STRUCTURE
+       01 ACC-REC.
+          05 WS-ACCNO      PIC X(5).
+          05 WS-NAME       PIC X(10).
+          05 WS-CARDNO     PIC X(16).
+          05 WS-BAL        PIC 9(08).
+          05 WS-CL         PIC 9(08).
+          05 WS-OTB        PIC 9(8).
+          05 WS-EXPDT      PIC X(5).
+          05 WS-CVV        PIC X(3).
+          05 KEST          PIC X(33) VALUE SPACES.
+          05 WS-PIN        PIC X(4).
+       01 WS-TXN-REC.
+          05 WS-TXN-ID     PIC X(11).
+          05 WS-TXN-DATE   PIC X(10).
+          05 WS-TXN-TYPE   PIC X(10).
+          05 WS-TXN-AMT    PIC 9(06).
+          05 GEST          PIC X(03).
+       01 YES PIC X VALUE 'N'.
+       01 CHECKS PIC X VALUE 'N'.
+          COPY TTRA.
+          COPY DFHAID.
+       LINKAGE SECTION.
+       01 DFHCOMMAREA.
+          05 CA-SCREEN     PIC X.
+          05 CA-ACCNO      PIC X(12).
+
+       PROCEDURE DIVISION.
+
+       MAIN-LOGIC.
+
+           IF EIBCALEN = 0
+               CONTINUE
+           ELSE
+            IF CA-SCREEN = 'X'
+               MOVE LOW-VALUES TO TTRAO
+               PERFORM SEND-SCREEN
+               MOVE 'Y' TO CA-SCREEN
+               EXEC CICS RETURN TRANSID('TTRA')
+                                COMMAREA(WS-COUNT)
+                                LENGTH(1)
+               END-EXEC
+            ELSE
+            EVALUATE EIBAID
+            WHEN DFHENTER
+                     EXEC CICS RECEIVE MAP('TTRA')
+                                       MAPSET('TTRA')
+                     END-EXEC
+                     PERFORM VALIDATION-PARA
+      *             EXEC CICS SEND TEXT FROM(WS-OTB) LENGTH(8) END-EXEC
+                     PERFORM OTB-UPDATION
+                     PERFORM WRITE-PARA
+            WHEN DFHPF3
+                     EXEC CICS XCTL PROGRAM('PMMNU')
+                     END-EXEC
+            WHEN OTHER
+                     MOVE ' WRONG KEY PRESSED ' TO REASNO
+            END-EVALUATE
+            END-IF
+            END-IF.
+       VALIDATION-PARA.
+           MOVE CA-ACCNO TO WS-ACCNO
+
+      * CHECK MANDATORY FIELDS
+           IF EXPDTI = SPACES OR
+              CVVI   = SPACES OR
+              CARDNI = SPACES OR
+              AMTI   = SPACES OR
+              SELEI   = SPACES OR
+              PINI   = SPACES
+              MOVE 'ENTER MISSING FIELDS' TO REASNO
+              EXEC CICS SEND MAP('TTRA')
+                                MAPSET('TTRA')
+                                ERASE
+              END-EXEC
+              PERFORM RETURN-PARA
+
+           END-IF
+      * READ ACCOUNT FILE
+           EXEC CICS READ FILE('ACCFL')
+                          INTO(ACC-REC)
+                          RIDFLD(WS-ACCNO)
+                          RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP NOT = DFHRESP(NORMAL)
+              MOVE 'ACCOUNT NOT FOUND' TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+              EXEC CICS SEND MAP('TTRA') MAPSET('TTRA') ERASE END-EXEC  D-EXEC
+              PERFORM RETURN-PARA
+
+           END-IF
+           IF WS-CARDNO NOT = CARDNI
+              MOVE 'CARD DOESNT BELONG TO YOU' TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+              PERFORM SEND-SCREEN
+              PERFORM RETURN-PARA
+           ELSE
+            MOVE CARDNI TO CHECK-NUM
+            PERFORM CHECK-DIGIT-PARA
+           END-IF
+      * VALIDATIONS
+           IF EXPDTI NOT = WS-EXPDT
+              MOVE 'INVALID EXPIRY DATE' TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+              PERFORM SEND-SCREEN
+              PERFORM RETURN-PARA
+           END-IF
+
+           IF CVVI NOT = WS-CVV
+              MOVE 'INVALID CVV' TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+              PERFORM SEND-SCREEN
+              PERFORM RETURN-PARA
+           END-IF
+
+           IF PINI NOT = WS-PIN
+              MOVE 'INVALID PIN' TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+              PERFORM SEND-SCREEN
+              PERFORM RETURN-PARA
+           END-IF
+           IF SELEI NOT = 1 AND SELEI NOT = 2 AND SELEI NOT = 3
+              MOVE 'WRONG CHOICE ' TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+              PERFORM SEND-SCREEN
+              PERFORM RETURN-PARA
+           END-IF
+      *     EXEC CICS SEND TEXT FROM(WS-OTB) LENGTH(8) END-EXEC
+            IF SELEI = 1 OR SELEI = 2
+                CONTINUE
+            ELSE
+            IF SELEI = 3 AND TENUREI = 0
+               MOVE 'ENTER TENURE FOR THE EMI'  TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+               PERFORM SEND-SCREEN
+               PERFORM RETURN-PARA
+           ELSE
+               MOVE AMTI TO WS-AMT1
+               MOVE TENUREI TO WS-TENURE1
+      *     EXEC CICS SEND TEXT FROM(WS-OTB) LENGTH(8) END-EXEC
+               IF WS-TENURE1 * WS-CL > WS-AMT1
+                   COMPUTE WS-TENURE1 = WS-AMT1 / WS-CL
+                   MOVE 'TENURE ADJUSTED TO' TO REASNO(1:18)
+                   MOVE TENUREI TO REASNO(20:1)
+                   MOVE 'DUE TO CREDIT LIMIT ISSUE' TO REASNO(23:20)
+      *            PERFORM SEND-SCREEN
+      *            PERFORM RETURN-PARA
+
+               ELSE
+               IF  WS-AMT1 / WS-TENURE1 > WS-OTB
+                   MOVE 'AMOUNT EXCEEDS OTB LIMIT' TO REASNO
+                   PERFORM SEND-SCREEN
+                   PERFORM RETURN-PARA
+               END-IF
+           END-IF
+           END-IF
+           IF SELEI = 1 AND TENUREI NOT = 0
+           MOVE 'TENURE NOT APPLICABLE FOR THIS PAYMENT TYPE' TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+              PERFORM SEND-SCREEN
+              PERFORM RETURN-PARA
+           END-IF
+           IF SELEI = 2 AND TENUREI NOT = 0
+           MOVE 'TENURE NOT APPLICABLE FOR THIS PAYMENT TYPE' TO REASNO
+              MOVE 'RE-ENTER ALL FIELDS' TO STATO
+              PERFORM SEND-SCREEN
+              PERFORM RETURN-PARA
+           END-IF
+           MOVE 'Y' TO CHECKS.
+       OTB-UPDATION.
+           IF CHECKS = 'N'
+              MOVE CA-ACCNO TO WS-ACCNO
+              EXEC CICS READ FILE('ACCFL')
+                             RIDFLD(WS-ACCNO)
+                             INTO(ACC-REC)
+                             UPDATE
+              END-EXEC
+              MOVE AMTI TO WS-AMT1
+              SUBTRACT WS-AMT1 FROM WS-OTB
+              EXEC CICS REWRITE FILE('ACCFL')
+                                FROM(ACC-REC)
+              END-EXEC.
+        WRITE-PARA.
+      * GENERATE TXN ID (ACCNO + DATE + COUNT)
+           IF CHECKS = 'N'
+           EXEC CICS ASKTIME
+           ABSTIME(WS-ABSTIME)
+           END-EXEC
+           EXEC CICS FORMATTIME
+           ABSTIME(WS-ABSTIME)
+           DDMMYYYY(WS-DATE)
+           DATESEP('/')
+           END-EXEC
+
+           MOVE WS-ACCNO TO WS-TXN-ID(1:5)
+           MOVE WS-DD    TO WS-TXN-ID(6:2)
+           MOVE WS-MM    TO WS-TXN-ID(8:2)
+           EXEC CICS STARTBR
+                FILE('TRANSFL2')
+                RIDFLD(WS-TXN-ID)
+                GENERIC
+                KEYLENGTH(09)
+                GTEQ
+                RESP(WS-RESP)
+           END-EXEC
+           IF WS-RESP = DFHRESP(NORMAL)
+           PERFORM UNTIL EOG = 'Y'
+           EXEC CICS READNEXT FILE('TRANSFL2')
+                          INTO(WS-TXN-REC)
+                          KEYLENGTH(9)
+                          RIDFLD(WS-TXN-ID)
+                          RESP(WS-RESP)
+           END-EXEC
+           IF WS-RESP = DFHRESP(NORMAL)
+              IF WS-TXN-ID(1:5) = WS-ACCNO
+                 MOVE WS-TXN-ID(10:2) TO WS-SEQ
+                 ADD 1 TO WS-SEQ
+                 MOVE WS-SEQ   TO WS-TXN-ID(10:2)
+              ELSE
+               ADD   1   TO WS-SEQ
+               MOVE WS-SEQ TO WS-TXN-ID(10:2)
+              END-IF
+           ELSE
+            MOVE 'Y' TO EOG
+               EXEC CICS ENDBR FILE('TRANSFL2')
+               END-EXEC
+           END-IF
+           END-PERFORM
+           END-IF
+      *    MOVE WS-TXN-ID TO WS-TXNID
+      *    MOVE AMTI      TO WS-TXN-AMT
+      *    MOVE SELEI      TO WS-TXN-TYPE
+      *    MOVE WS-TXN-ID     TO WS-TXN-ID
+           MOVE WS-DATE1      TO WS-TXN-DATE
+           MOVE AMTI          TO WS-TXN-AMT
+           EVALUATE SELEI
+           WHEN 1
+                 MOVE 'PURCHASE' TO WS-TXN-TYPE
+           WHEN 2
+                 MOVE 'CASH WD' TO WS-TXN-TYPE
+           WHEN 3
+                 MOVE 'EMI' TO WS-TXN-TYPE
+                 MOVE  TENUREI TO WS-TXN-TYPE(4:1)
+           WHEN OTHER
+                MOVE 'WRONG CHOICE' TO REASNO
+                PERFORM SEND-SCREEN
+                PERFORM RETURN-PARA
+           END-EVALUATE
+      *    MOVE CA-ACCNO      TO WS-TXN-ACC
+
+      * WRITE TRANSACTION FILE
+           EXEC CICS WRITE FILE('TRANSFL2')
+                          FROM(WS-TXN-REC)
+                          RIDFLD(WS-TXN-ID)
+                          RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP = DFHRESP(NORMAL)
+              MOVE 'Y' TO YES
+              MOVE 'SUCCESS' TO STATO
+              MOVE 'TRANSACTION COMPLETED' TO REASNO
+              PERFORM SEND-SCREEN
+              EXEC CICS XCTL PROGRAM('PMMNU')
+                             COMMAREA(DFHCOMMAREA)
+                             LENGTH(LENGTH OF DFHCOMMAREA)
+              END-EXEC
+           ELSE
+              MOVE 'FAILED' TO STATO
+              MOVE 'WRITE ERROR' TO REASNO
+              PERFORM SEND-SCREEN
+              PERFORM RETURN-PARA
+           END-IF.
+
+
+       SEND-SCREEN.
+           IF YES = 'N'
+           MOVE ZERO TO TENUREO
+           END-IF
+           EXEC CICS SEND MAP('TTRA')
+                             MAPSET('TTRA')
+                             ERASE
+            END-EXEC.
+
+        RETURN-PARA.
+             EXEC CICS RETURN TRANSID('TTRA')
+                              COMMAREA(DFHCOMMAREA)
+                              LENGTH(LENGTH OF DFHCOMMAREA)
+             END-EXEC.
+       CHECK-DIGIT-PARA.
+           MOVE 0  TO I
+           MOVE 0  TO LEFT-SUM
+           MOVE 0  TO RIGHT-SUM
+           MOVE 15 TO J
+           MOVE 2  TO K
+           PERFORM UNTIL I > 7
+              MOVE CHECK-NUM(J:1)       TO DOUBLE
+              MULTIPLY DOUBLE BY 2 GIVING DOUBLE
+              IF DOUBLE > 9
+                 SUBTRACT 9 FROM DOUBLE
+              END-IF
+              ADD DOUBLE                TO RIGHT-SUM
+              MOVE CHECK-NUM(K:1)       TO SINGLE
+              ADD SINGLE                TO LEFT-SUM
+              ADD 2                     TO K
+              SUBTRACT 2               FROM J
+              ADD 1                     TO I
+           END-PERFORM
+           COMPUTE LUHN-SUM = LEFT-SUM + RIGHT-SUM
+           DIVIDE 10 INTO LUHN-SUM GIVING LUHN-SUM
+                                   REMAINDER LUHN-CHECK
+           IF LUHN-CHECK = 0
+              MOVE 'CARD IS VALID      '  TO REASNO
+           ELSE
+              MOVE 'CARD NUMBER INVALID'  TO REASNO
+           END-IF
+           EXEC CICS SEND TEXT FROM(REASNO) LENGTH(30) END-EXEC.
+

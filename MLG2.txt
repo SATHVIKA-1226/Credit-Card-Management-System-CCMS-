@@ -1,0 +1,32 @@
+MLG2    DFHMSD TYPE=&SYSPARM,MODE=INOUT,LANG=COBOL,STORAGE=AUTO,       X00010000
+               CTRL=FREEKB,MAPATTS=(COLOR,HILIGHT)                      00020000
+MLG2    DFHMDI SIZE=(24,80),LINE=1,COLUMN=1                             00030000
+TOPLIN  DFHMDF POS=(2,2),LENGTH=75,INITIAL='---------------------------X00040000
+               -------------------------------------------------------' 00050000
+TITLE   DFHMDF POS=(3,30),LENGTH=20,ATTRB=(PROT,BRT),                  X00060000
+               INITIAL='CUSTOMER LOGIN'                                 00070000
+        DFHMDF POS=(3,60),LENGTH=6,ATTRB=(PROT),                       X00080000
+               INITIAL='DATE:'                                          00090000
+DATE    DFHMDF POS=(3,67),LENGTH=10,ATTRB=(PROT),HILIGHT=UNDERLINE      00100000
+        DFHMDF POS=(3,78),LENGTH=1,ATTRB=(ASKIP)                        00110000
+MIDLIN  DFHMDF POS=(4,2),LENGTH=75,INITIAL='---------------------------X00120000
+               -------------------------------------------------------' 00130000
+        DFHMDF POS=(6,10),LENGTH=17,ATTRB=(PROT),                      X00140000
+               INITIAL='ACCOUNT NUMBER :'                               00150000
+ACCNO   DFHMDF POS=(6,28),LENGTH=5,ATTRB=(UNPROT,IC),HILIGHT=UNDERLINE  00160000
+        DFHMDF POS=(6,34),LENGTH=1,ATTRB=(ASKIP)                        00170000
+        DFHMDF POS=(8,10),LENGTH=17,ATTRB=(PROT),                      X00180000
+               INITIAL='PIN            :'                               00190000
+PIN     DFHMDF POS=(8,28),LENGTH=4,ATTRB=UNPROT,HILIGHT=UNDERLINE       00200000
+        DFHMDF POS=(8,33),LENGTH=1,ATTRB=(ASKIP)                        00210000
+        DFHMDF POS=(14,10),LENGTH=8,INITIAL='MESSAGE:',ATTRB=PROT       00220000
+MSG     DFHMDF POS=(14,19),LENGTH=20,ATTRB=(PROT,BRT)                   00230000
+        DFHMDF POS=(22,10),LENGTH=35,ATTRB=(PROT),                     X00240000
+               INITIAL='PRESS ENTER TO LOGIN  F3=EXIT '                 00250000
+                                                                        00260000
+BOTLIN  DFHMDF POS=(20,1),LENGTH=80,ATTRB=(PROT),INITIAL='-------------X00270000
+               --------------------------------------------------------X00280000
+               ---------'                                               00290000
+        DFHMSD TYPE=FINAL                                               00300000
+               END                                                      00310000
+

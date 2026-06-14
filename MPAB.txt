@@ -1,0 +1,82 @@
+MPAB     DFHMSD TYPE=MAP,MODE=INOUT,LANG=COBOL,STORAGE=AUTO,           X
+               TIOAPFX=YES,CTRL=FREEKB,                                X
+               DSATTS=(COLOR,HILIGHT),MAPATTS=(COLOR,HILIGHT)
+
+MPAB     DFHMDI SIZE=(24,80),LINE=1,COLUMN=1
+
+         DFHMDF POS=(1,1),LENGTH=80,ATTRB=PROT,                        X
+               INITIAL='-----------------------------------------------X--------
+               --------------------------------'
+
+         DFHMDF POS=(2,25),LENGTH=20,ATTRB=(PROT,BRT),                 X
+               INITIAL='PAY BILL'
+
+         DFHMDF POS=(2,56),LENGTH=5,ATTRB=(PROT,BRT),                  X
+               INITIAL='DATE:'
+DATEI    DFHMDF POS=(2,62),LENGTH=10,                                  X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(2,73),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(3,1),LENGTH=80,ATTRB=PROT,                        X
+               INITIAL='-----------------------------------------------X--------
+               --------------------------------'
+
+         DFHMDF POS=(5,5),LENGTH=22,ATTRB=PROT,                        X
+               INITIAL='Account number     :'
+ACCNOI   DFHMDF POS=(5,28),LENGTH=5,                                   X
+               ATTRB=(UNPROT,IC),HILIGHT=UNDERLINE
+         DFHMDF POS=(5,34),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(7,5),LENGTH=22,ATTRB=PROT,                        X
+               INITIAL='Outstanding Amount :'
+OUTAMTI  DFHMDF POS=(7,28),LENGTH=8,                                   X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(7,37),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(9,5),LENGTH=22,ATTRB=PROT,                        X
+               INITIAL='Minimum due Amount :'
+MINAMTI  DFHMDF POS=(9,28),LENGTH=8,                                   X
+               ATTRB=(PROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(9,37),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(11,5),LENGTH=22,ATTRB=PROT,                       X
+               INITIAL='Card Number        :'
+CARDNOI  DFHMDF POS=(11,28),LENGTH=16,                                 X
+               ATTRB=(UNPROT,IC),HILIGHT=UNDERLINE
+         DFHMDF POS=(11,45),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(13,5),LENGTH=22,ATTRB=PROT,                       X
+               INITIAL='Expiry Date        :'
+EXPI     DFHMDF POS=(13,28),LENGTH=5,                                  X
+               ATTRB=(UNPROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(13,34),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(15,5),LENGTH=22,ATTRB=PROT,                       X
+               INITIAL='CVV                :'
+CVVI     DFHMDF POS=(15,28),LENGTH=3,                                  X
+               ATTRB=(UNPROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(15,32),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(16,5),LENGTH=22,ATTRB=PROT,                       X
+               INITIAL='Enter Payment Amt  :'
+PAYAMTI  DFHMDF POS=(16,28),LENGTH=8,                                  X
+               ATTRB=(UNPROT),HILIGHT=UNDERLINE
+         DFHMDF POS=(16,37),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(18,20),LENGTH=25,ATTRB=PROT,                      X
+               INITIAL='Press ENTER to Pay'
+
+         DFHMDF POS=(20,3),LENGTH=4,ATTRB=PROT,INITIAL='MSG:'
+MSG      DFHMDF POS=(20,8),LENGTH=20,ATTRB=PROT,HILIGHT=UNDERLINE
+         DFHMDF POS=(20,29),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(23,1),LENGTH=80,ATTRB=PROT,                       X
+               INITIAL='-----------------------------------------------X--------
+               --------------------------------'
+
+         DFHMDF POS=(24,5),LENGTH=15,ATTRB=PROT,                       X
+               INITIAL='PF3 = Back'
+
+         DFHMSD TYPE=FINAL
+         END
+

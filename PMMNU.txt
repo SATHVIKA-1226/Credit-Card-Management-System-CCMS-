@@ -1,0 +1,136 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. PMMNU.
+
+       DATA DIVISION.
+
+       WORKING-STORAGE SECTION.
+
+       01 WS-RESP        PIC S9(8) COMP.
+       01 WS-OPTION      PIC X.
+       01 WS-MSG         PIC X(60).
+       01 WS-DATE        PIC X(10).
+       01 WS-ABSTIME     PIC X(10).
+       COPY DFHAID.
+       COPY MMNU.
+       LINKAGE SECTION.
+
+       01 DFHCOMMAREA.
+          05 CA-SCREEN   PIC X.
+          05 CA-ACCID    PIC X(05).
+
+       PROCEDURE DIVISION.
+
+      *----------------------------------------------------------------*
+       MAIN-LOGIC.
+
+      * FIRST TIME ENTRY FROM LOGIN
+           IF EIBCALEN = 0
+      *       MOVE 'Y' TO CA-SCREEN
+              MOVE LOW-VALUES TO MMNUO
+              EXEC CICS SEND MAP('MMNU')
+                                MAPSET('MMNU')
+                                ERASE
+              END-EXEC
+              EXEC CICS RETURN TRANSID('TMNU')
+                               COMMAREA(WS-OPTION)
+                               LENGTH(1)
+              END-EXEC
+           ELSE
+           IF CA-SCREEN = 'X'
+              EXEC CICS ASKTIME
+              ABSTIME(WS-ABSTIME)
+              END-EXEC
+              EXEC CICS FORMATTIME
+              ABSTIME(WS-ABSTIME)
+              DDMMYYYY(WS-DATE)
+              DATESEP('/')
+              END-EXEC
+              MOVE WS-DATE TO DATEO
+              MOVE 'Y' TO CA-SCREEN
+              MOVE LOW-VALUES TO MMNUO
+              PERFORM SEND-SCREEN
+      *       EXEC CICS RETURN TRANSID('TMNU')
+      *                        COMMAREA(WS-OPTION)
+      *                        LENGTH(1)
+      *       END-EXEC
+           ELSE
+      *      MOVE '11112' TO CA-ACCID
+             EVALUATE EIBAID
+             WHEN DFHENTER
+                 PERFORM RECIEVE-PARA
+             WHEN DFHPF3
+                 EXEC CICS XCTL PROGRAM('PMLG2')
+                 END-EXEC
+            END-EVALUATE
+            END-IF.
+       RECIEVE-PARA.
+                 EXEC CICS RECEIVE MAP('MMNU')
+                                   MAPSET('MMNU')
+                 END-EXEC
+
+      * GET OPTION
+           MOVE OPTIONI TO WS-OPTION
+
+      *----------------------------------------------------------------*
+      * VALIDATE INPUT
+      *----------------------------------------------------------------*
+           IF WS-OPTION = SPACES
+              MOVE 'ENTER A VALID OPTION (1-5)' TO MSGFLDO
+              PERFORM SEND-SCREEN
+           END-IF
+
+      *----------------------------------------------------------------*
+      * ROUTING LOGIC
+      *----------------------------------------------------------------*
+           EVALUATE WS-OPTION
+
+           WHEN '1'
+               EXEC CICS XCTL
+                    PROGRAM('PMACI')
+               END-EXEC
+
+           WHEN '2'
+               MOVE 'X'        TO CA-SCREEN
+               EXEC CICS XCTL
+                    PROGRAM('PTTRA')
+                    COMMAREA(DFHCOMMAREA)
+                    LENGTH(LENGTH OF DFHCOMMAREA)
+               END-EXEC
+
+           WHEN '3'
+               EXEC CICS XCTL
+                    PROGRAM('PMPAB')
+
+               END-EXEC
+
+           WHEN '4'
+               MOVE 'X'        TO CA-SCREEN
+               EXEC CICS XCTL
+                    PROGRAM('PTTRH')
+                    COMMAREA(DFHCOMMAREA)
+                    LENGTH(LENGTH OF DFHCOMMAREA)
+               END-EXEC
+
+           WHEN '5'
+               EXEC CICS XCTL
+                    PROGRAM('PMPUP')
+               END-EXEC
+
+           WHEN OTHER
+               MOVE 'INVALID OPTION. ENTER 1-5' TO MSGFLDO
+               PERFORM SEND-SCREEN
+
+           END-EVALUATE.
+
+       SEND-SCREEN.
+
+           EXEC CICS SEND MAP('MMNU')
+                             MAPSET('MMNU')
+                             ERASE
+           END-EXEC
+
+           EXEC CICS RETURN TRANSID('TMNU')
+                     COMMAREA(DFHCOMMAREA)
+                     LENGTH(LENGTH OF DFHCOMMAREA)
+           END-EXEC.
+

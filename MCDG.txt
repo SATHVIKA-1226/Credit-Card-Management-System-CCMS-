@@ -1,0 +1,63 @@
+MCDG    DFHMSD TYPE=MAP,MODE=INOUT,LANG=COBOL,STORAGE=AUTO,            X
+               TIOAPFX=YES,CTRL=FREEKB,DSATTS=(COLOR,HILIGHT),         X
+               MAPATTS=(COLOR,HILIGHT)
+MCDG    DFHMDI SIZE=(24,80),LINE=1,COLUMN=1
+
+        DFHMDF POS=(1,1),LENGTH=79,ATTRB=(PROT,BRT),                   X
+               INITIAL='-----------------------------------------------X--------
+               ------------------------------'
+        DFHMDF POS=(2,30),LENGTH=22,ATTRB=(PROT,BRT),                  X
+               INITIAL='CARD DETAILS GENERATED'
+        DFHMDF POS=(2,55),LENGTH=18,ATTRB=(PROT,NORM),                 X
+               INITIAL='Date:___________'
+        DFHMDF POS=(3,1),LENGTH=79,ATTRB=(PROT,BRT),                   X
+               INITIAL='-----------------------------------------------X--------
+               ------------------------------'
+        DFHMDF POS=(5,1),LENGTH=18,ATTRB=(PROT,NORM),                  X
+               INITIAL='Account Number  :'
+ACCTF   DFHMDF POS=(5,20),LENGTH=12,ATTRB=(PROT,BRT),HILIGHT=UNDERLINE
+        DFHMDF POS=(5,34),LENGTH=12,ATTRB=ASKIP
+        DFHMDF POS=(7,1),LENGTH=18,ATTRB=(PROT,NORM),                  X
+               INITIAL='Card Number     :'
+CARDF   DFHMDF POS=(7,20),LENGTH=22,ATTRB=(PROT,BRT),HILIGHT=UNDERLINE
+        DFHMDF POS=(7,44),LENGTH=12,ATTRB=ASKIP
+        DFHMDF POS=(9,1),LENGTH=18,ATTRB=(PROT,NORM),                  X
+               INITIAL='Card Type       :'
+TYPEF   DFHMDF POS=(9,20),LENGTH=12,ATTRB=(PROT,BRT),HILIGHT=UNDERLINE
+        DFHMDF POS=(9,34),LENGTH=12,ATTRB=ASKIP
+        DFHMDF POS=(11,1),LENGTH=18,ATTRB=(PROT,NORM),                 X
+               INITIAL='Credit Limit    :'
+LIMTF   DFHMDF POS=(11,20),LENGTH=12,ATTRB=(PROT,BRT),HILIGHT=UNDERLINE
+        DFHMDF POS=(11,34),LENGTH=12,ATTRB=ASKIP
+        DFHMDF POS=(13,1),LENGTH=18,ATTRB=(PROT,NORM),                 X
+               INITIAL='Expiry Date     :'
+EXPF    DFHMDF POS=(13,20),LENGTH=10,ATTRB=(PROT,BRT),HILIGHT=UNDERLINE
+        DFHMDF POS=(13,31),LENGTH=12,ATTRB=ASKIP
+        DFHMDF POS=(15,1),LENGTH=18,ATTRB=(PROT,NORM),                 X
+               INITIAL='CVV             :'
+CVVF    DFHMDF POS=(15,20),LENGTH=06,ATTRB=(PROT,BRT),HILIGHT=UNDERLINE
+        DFHMDF POS=(15,28),LENGTH=12,ATTRB=ASKIP
+        DFHMDF POS=(17,1),LENGTH=21,ATTRB=(PROT,NORM),                 X
+               INITIAL='Billing Cycle Date :'
+BILLF   DFHMDF POS=(17,24),LENGTH=10,ATTRB=(PROT,BRT),HILIGHT=UNDERLINE
+        DFHMDF POS=(17,35),LENGTH=12,ATTRB=ASKIP
+        DFHMDF POS=(19,1),LENGTH=21,ATTRB=(PROT,NORM),                 X
+               INITIAL='Interest Rate      :'
+        DFHMDF POS=(19,24),LENGTH=15,ATTRB=(PROT,BRT),                 X
+               INITIAL='3.5% per month'
+
+        DFHMDF POS=(20,1),LENGTH=21,ATTRB=(PROT,NORM),                 X
+               INITIAL='Late Payment Fee   :'
+        DFHMDF POS=(20,24),LENGTH=10,ATTRB=(PROT,BRT),                 X
+               INITIAL='500 INR'
+
+        DFHMDF POS=(22,1),LENGTH=35,ATTRB=(PROT,NORM),                 X
+               INITIAL='***If payment not done by due date'             l be app
+        DFHMDF POS=(22,37),LENGTH=28,ATTRB=PROT,                       X
+               INITIAL='interest will be applied***'
+        DFHMDF POS=(24,1),LENGTH=22,ATTRB=(PROT,NORM),                 X
+               INITIAL='Press ENTER to Set PIN'
+
+        DFHMSD TYPE=FINAL
+               END
+

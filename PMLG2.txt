@@ -1,0 +1,146 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. MLG2PGM.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       COPY MLG2.
+       COPY DFHAID.
+       01 WS-COMMAREA    PIC X(5).
+       01 WS-ACCNO       PIC X(5).
+       01 WS-PIN         PIC X(4).
+       01 WS-DATE        PIC X(10).
+       01 WS-ABSTIME     PIC S9(15) COMP-3.
+       01 RES            PIC S9(8) COMP.
+       01 ACC-REC.
+          05 A-ACCNO     PIC X(5).
+          05 A-PIN       PIC X(4).
+          05 FILLER      PIC X(71).
+
+       LINKAGE SECTION.
+       01 DFHCOMMAREA.
+          05 CA-SCREEN PIC X.
+          05 CA-ACCNO PIC X(5).
+       PROCEDURE DIVISION.
+       MAIN-LOGIC.
+           MOVE LOW-VALUES TO MLG2O
+           IF EIBCALEN = 0
+              PERFORM SEND-SCREEN
+              EXEC CICS RETURN
+                   TRANSID('TLG2')
+                   COMMAREA(WS-COMMAREA)
+              END-EXEC
+           END-IF
+
+           IF EIBAID = DFHPF3
+              EXEC CICS XCTL PROGRAM('PMLG1')
+              END-EXEC
+           END-IF
+
+           PERFORM RECEIVE-SCREEN
+           PERFORM VALIDATE-DATA.
+
+       SEND-SCREEN.
+
+           EXEC CICS ASKTIME
+                ABSTIME(WS-ABSTIME)
+           END-EXEC
+
+           EXEC CICS FORMATTIME
+                ABSTIME(WS-ABSTIME)
+                DDMMYY(WS-DATE)
+                DATESEP('/')
+           END-EXEC
+
+           MOVE WS-DATE TO DATEO
+           MOVE 'CUSTOMER LOGIN' TO TITLEO
+
+           EXEC CICS SEND
+                MAP('MLG2')
+                MAPSET('MLG2')
+                FREEKB
+                ERASE
+           END-EXEC.
+
+       RECEIVE-SCREEN.
+
+           EXEC CICS RECEIVE
+                MAP('MLG2')
+                MAPSET('MLG2')
+                INTO(MLG2I)
+           END-EXEC
+
+           MOVE ACCNOI TO WS-ACCNO
+           MOVE PINI   TO WS-PIN.
+
+       VALIDATE-DATA.
+
+           IF WS-ACCNO = SPACES OR WS-PIN = SPACES
+              MOVE 'ENTER DATA' TO MSGO
+              PERFORM SEND-ERROR
+           ELSE
+              PERFORM READ-VSAM
+           END-IF.
+
+           IF WS-ACCNO IS NOT NUMERIC
+              MOVE 'ENTER VALID ACCNO' TO MSGO
+              PERFORM SEND-ERROR
+           END-IF.
+
+           IF WS-PIN IS NOT NUMERIC
+              MOVE 'ENTER VALID PIN' TO MSGO
+              PERFORM SEND-ERROR
+           END-IF.
+
+       READ-VSAM.
+
+           MOVE WS-ACCNO TO A-ACCNO
+
+           EXEC CICS READ
+                FILE('ACCFILE')
+                INTO(ACC-REC)
+                RIDFLD(A-ACCNO)
+                RESP(RES)
+           END-EXEC
+
+           IF RES NOT = DFHRESP(NORMAL)
+              MOVE 'ACC NOT FOUND' TO MSGO
+              PERFORM SEND-ERROR
+           ELSE
+              IF WS-PIN = A-PIN
+                 MOVE WS-ACCNO TO CA-ACCNO
+                 MOVE 'X' TO CA-SCREEN
+                 EXEC CICS XCTL
+                      PROGRAM('PMMNU')
+                      COMMAREA(DFHCOMMAREA)
+                      LENGTH( LENGTH OF DFHCOMMAREA)
+                 END-EXEC
+              ELSE
+                 MOVE 'INVALID PIN' TO MSGO
+                 PERFORM SEND-ERROR
+              END-IF
+           END-IF.
+
+       SEND-ERROR.
+
+           EXEC CICS ASKTIME
+                ABSTIME(WS-ABSTIME)
+           END-EXEC
+
+           EXEC CICS FORMATTIME
+                ABSTIME(WS-ABSTIME)
+                DDMMYY(WS-DATE)
+                DATESEP('/')
+           END-EXEC
+
+           MOVE WS-DATE TO DATEO
+
+           EXEC CICS SEND
+                MAP('MLG2')
+                MAPSET('MLG2')
+                FREEKB
+           END-EXEC
+
+           EXEC CICS RETURN
+                TRANSID('TLG2')
+                COMMAREA(WS-COMMAREA)
+           END-EXEC.
+

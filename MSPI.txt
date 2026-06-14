@@ -1,0 +1,36 @@
+MSPI    DFHMSD TYPE=&SYSPARM,MODE=INOUT,LANG=COBOL,STORAGE=AUTO,       X00010000
+               CTRL=FREEKB,MAPATTS=(COLOR,HILIGHT)                      00020000
+MSPI    DFHMDI SIZE=(24,80),LINE=1,COLUMN=1                             00030000
+TOPLIN  DFHMDF POS=(2,2),LENGTH=75,INITIAL='---------------------------X00040000
+               -------------------------------------------------------' 00050000
+TITLE   DFHMDF POS=(3,30),LENGTH=20,ATTRB=(PROT,BRT),                  X00060000
+               INITIAL='SET YOUR PIN'                                   00070000
+        DFHMDF POS=(3,60),LENGTH=6,ATTRB=(PROT),                       X00080000
+               INITIAL='DATE:'                                          00090000
+DATE    DFHMDF POS=(3,67),LENGTH=10,ATTRB=(PROT),HILIGHT=UNDERLINE      00100000
+        DFHMDF POS=(3,78),LENGTH=1,ATTRB=(ASKIP)                        00110000
+MIDLIN  DFHMDF POS=(4,2),LENGTH=75,INITIAL='---------------------------X00120000
+               -------------------------------------------------------' 00130000
+        DFHMDF POS=(6,10),LENGTH=14,ATTRB=(PROT),                      X00140000
+               INITIAL='ACCOUNT NO :'                                   00150000
+ACCNO   DFHMDF POS=(6,25),LENGTH=5,ATTRB=(UNPROT,IC),HILIGHT=UNDERLINE  00160000
+        DFHMDF POS=(6,31),LENGTH=1,ATTRB=(ASKIP)                        00170000
+        DFHMDF POS=(8,10),LENGTH=14,ATTRB=(PROT),                      X00180000
+               INITIAL='ENTER PIN  :'                                   00190000
+ENTPN   DFHMDF POS=(8,25),LENGTH=4,ATTRB=(UNPROT),HILIGHT=UNDERLINE     00200000
+        DFHMDF POS=(8,30),LENGTH=1,ATTRB=(ASKIP)                        00210000
+        DFHMDF POS=(10,10),LENGTH=14,ATTRB=(PROT),                     X00220000
+               INITIAL='CONFORM PIN:'                                   00230000
+CONPN   DFHMDF POS=(10,25),LENGTH=4,ATTRB=UNPROT,HILIGHT=UNDERLINE      00240000
+        DFHMDF POS=(10,30),LENGTH=1,ATTRB=(ASKIP)                       00250000
+        DFHMDF POS=(16,10),LENGTH=8,INITIAL='MESSAGE:',ATTRB=PROT       00260000
+MSG     DFHMDF POS=(16,19),LENGTH=20,ATTRB=(PROT,BRT)                   00270000
+        DFHMDF POS=(22,10),LENGTH=35,ATTRB=(PROT),                     X00280000
+               INITIAL='PRESS ENTER TO SAVE   PF=CANCEL '               00290000
+                                                                        00300000
+BOTLIN  DFHMDF POS=(20,1),LENGTH=80,ATTRB=(PROT),INITIAL='-------------X00310000
+               --------------------------------------------------------X00320000
+               ---------'                                               00330000
+        DFHMSD TYPE=FINAL                                               00340000
+               END                                                      00350000
+

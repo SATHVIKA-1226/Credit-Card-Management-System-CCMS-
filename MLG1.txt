@@ -1,0 +1,25 @@
+MLG1    DFHMSD TYPE=MAP,MODE=INOUT,LANG=COBOL,STORAGE=AUTO,            X
+               TIOAPFX=YES,CTRL=FREEKB,DSATTS=(COLOR,HILIGHT),         X
+               MAPATTS=(COLOR,HILIGHT)
+MLG1    DFHMDI SIZE=(24,80),LINE=1,COLUMN=1
+        DFHMDF POS=(2,2),LENGTH=75,ATTRB=(PROT),INITIAL='--------------X
+               --------------------------------------------------------X
+               ---------------------'
+        DFHMDF POS=(4,18),LENGTH=40,ATTRB=(PROT,BRT),                  X
+               INITIAL='CREDIT CARD MANAGEMENT SYSTEM'
+        DFHMDF POS=(6,2),LENGTH=75,ATTRB=(PROT),INITIAL='--------------X
+               --------------------------------------------------------X
+               ---------------------'
+        DFHMDF POS=(9,20),LENGTH=35,                                   X
+               INITIAL='1. NEW CUSTOMER ONBOARDING'
+        DFHMDF POS=(13,20),LENGTH=35,                                  X
+               INITIAL='2. EXISTING CUSTOMER LOGIN'
+        DFHMDF POS=(17,20),LENGTH=20,                                  X
+               INITIAL='SELECT OPTION ==>'
+OPTION  DFHMDF POS=(17,41),LENGTH=1,ATTRB=(UNPROT,IC),HILIGHT=UNDERLINE
+        DFHMDF POS=(17,43),LENGTH=1,ATTRB=ASKIP
+
+MSGFLD  DFHMDF POS=(22,10),LENGTH=50,ATTRB=(PROT)
+        DFHMSD TYPE=FINAL
+               END
+

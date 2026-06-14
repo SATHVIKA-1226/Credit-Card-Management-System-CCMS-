@@ -1,0 +1,121 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. MLG1PGM.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+
+       COPY DFHAID.
+       COPY DFHBMSCA.
+       COPY MLG1.
+
+       01  WS-COMMAREA.
+           05 WS-STATE            PIC X(1).
+              88 FIRST-TIME       VALUE '1'.
+              88 AFTER-RECEIVE    VALUE '2'.
+
+       LINKAGE SECTION.
+
+       01  DFHCOMMAREA.
+           05 LK-STATE            PIC X(1).
+
+
+       PROCEDURE DIVISION.
+
+       MAIN-PARA.
+           MOVE LOW-VALUES TO MLG1O
+
+           IF EIBCALEN = 0
+               MOVE '1' TO WS-STATE
+               PERFORM SEND-INITIAL-SCREEN
+           ELSE
+               MOVE DFHCOMMAREA TO WS-COMMAREA
+               PERFORM RECEIVE-SCREEN
+           END-IF.
+
+           GOBACK.
+
+       SEND-INITIAL-SCREEN.
+
+           MOVE SPACES TO MSGFLDO
+
+           EXEC CICS
+                SEND MAP('MLG1')
+                     MAPSET('MLG1')
+                     FROM(MLG1O)
+                     ERASE
+                     FREEKB
+           END-EXEC
+
+           MOVE '2' TO WS-STATE
+
+           EXEC CICS
+                RETURN
+                TRANSID('TLG1')
+                COMMAREA(WS-COMMAREA)
+                LENGTH(LENGTH OF WS-COMMAREA)
+           END-EXEC.
+
+       RECEIVE-SCREEN.
+
+           EXEC CICS
+                RECEIVE MAP('MLG1')
+                        MAPSET('MLG1')
+           END-EXEC
+
+           EVALUATE EIBAID
+
+               WHEN DFHPF3
+                    EXEC CICS
+                         RETURN
+                    END-EXEC
+
+               WHEN DFHENTER
+                    PERFORM PROCESS-OPTION
+
+               WHEN OTHER
+                    MOVE 'INVALID KEY PRESSED'
+                      TO MSGFLDO
+                    PERFORM RESEND-SCREEN
+
+           END-EVALUATE.
+
+       PROCESS-OPTION.
+
+           EVALUATE OPTIONI
+
+               WHEN '1'
+
+                    EXEC CICS
+                         XCTL PROGRAM('PMAPF')
+                    END-EXEC
+
+               WHEN '2'
+
+                    EXEC CICS
+                         XCTL PROGRAM('PMLG2')
+                    END-EXEC
+
+               WHEN OTHER
+
+                    MOVE 'ENTER VALID OPTION (1 OR 2)'
+                      TO MSGFLDO
+
+                    PERFORM RESEND-SCREEN
+
+           END-EVALUATE.
+
+       RESEND-SCREEN.
+
+           EXEC CICS
+                SEND MAP('MLG1')
+                     MAPSET('MLG1')
+                     FROM(MLG1O)
+                     CURSOR
+           END-EXEC
+
+           EXEC CICS
+                RETURN
+                TRANSID('TLG1')
+                COMMAREA(WS-COMMAREA)
+                LENGTH(LENGTH OF WS-COMMAREA)
+           END-EXEC.
+

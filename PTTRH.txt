@@ -1,0 +1,367 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. PTTRH.
+
+       DATA DIVISION.
+
+       WORKING-STORAGE SECTION.
+       01 EOF  PIC X VALUE 'N'.
+       01 EOD  PIC X VALUE 'N'.
+       01 WS-TSQ-NAME        PIC X(11) VALUE 'CPAYHISTORY'.
+       01 WS-RESP            PIC S9(8) COMP.
+       01 WS-I               PIC S9(4) COMP.
+       01 WS-TEMP-INDEX      PIC S9(4) COMP.
+       01 WS-REC.
+          05 WS-TRANSID     PIC X(11).
+          05 WS-DATE         PIC X(10).
+          05 WS-TYPE         PIC X(10).
+          05 WS-AMOUNT       PIC X(6).
+        1 TRANS-REC.
+          05 TRANS-ID       PIC X(11).
+          05 DATE1         PIC X(10).
+          05 TYPE1         PIC X(10).
+          05 AMOUNT        PIC X(06).
+          05 BEAT            PIC X(27).
+       01 MU-REC.
+          05 MU-SCREEN PIC X.
+          05 MU-ACCNO  PIC 9(5).
+      *01 ACC-REC.
+      *   05 ACC-NO      PIC X(5).
+      *   05 CARD-NO     PIC X(16).
+      *   05 FILLER      PIC X(52) VALUE SPACES.
+      *   05 OTB         PIC 9(6).
+      *   05 FILLER      PIC X(15) VALUE SPACES.
+      *   05 CURR-BALANCE  PIC 9(6).
+      *   05 FILLER      PIC X(21) VALUE SPACES.
+       01 ACC-REC.
+          05 ACC-NO      PIC X(5).
+          05 WS-NAME       PIC X(10).
+          05 CARD-NO     PIC X(16).
+          05 CURR-BALANCE  PIC 9(08).
+          05 WS-CL         PIC 9(08).
+          05 OTB        PIC 9(8).
+          05 WS-EXPDT      PIC X(5).
+          05 WS-CVV        PIC X(3).
+          05 KEST          PIC X(33) VALUE SPACES.
+          05 WS-PIN        PIC X(4).
+      *----------------------------------------------------------------*
+             COPY TTRH.
+             COPY DFHAID.
+      *----------------------------------------------------------------*
+      *----------------------------------------------------------------*
+      * COMMAREA
+      *----------------------------------------------------------------*
+       LINKAGE SECTION.
+       01 DFHCOMMAREA.
+          05 CA-SCREEN       PIC X VALUE 'X'.
+          05 CA-ACCNO        PIC 9(5).
+          05 CA-CARDNO       PIC 9(6).
+          05 CA-INDEX        PIC  9(4).
+          05 CA-TOTAL        PIC  9(4).
+          05 CA-TPAID        PIC 9(9).
+          05 CA-TDUE         PIC 9(9).
+
+       PROCEDURE DIVISION.
+       MAIN-PARA.
+           IF EIBCALEN = 0
+      * DELETE ALL TIS SCRAP WHILE INTEGRATION
+      *       MOVE 1 TO CA-INDEX
+      *       PERFORM LOAD-TSQ
+      *       PERFORM DISPLAY-PARA
+              ADD  1 TO  WS-I
+      *       EXEC CICS SEND TEXT
+      *                      FROM(WS-I)
+      *                      LENGTH(2)
+      *       END-EXEC
+              EXEC CICS SEND MAP('TTRH') MAPSET('TTRH')
+              END-EXEC
+              EXEC CICS RETURN
+                        TRANSID('TTRH')
+                        COMMAREA(WS-I)
+                        LENGTH(02)
+              END-EXEC
+           ELSE
+
+           IF CA-SCREEN = 'X'
+      *    EXEC CICS SEND TEXT
+      *                   FROM(CA-SCREEN)
+      *                   LENGTH(1)
+      *    END-EXEC
+              MOVE 'Y' TO CA-SCREEN
+              MOVE 1 TO CA-INDEX
+              MOVE LOW-VALUES TO TTRHO
+              MOVE CA-ACCNO  TO ACCNOI
+              EXEC CICS SEND MAP('TTRH') MAPSET('TTRH')   ERASE
+              END-EXEC
+              EXEC CICS RETURN
+                        TRANSID('TTRH')
+                        COMMAREA(DFHCOMMAREA)
+                        LENGTH(LENGTH OF DFHCOMMAREA)
+              END-EXEC
+           ELSE
+           EVALUATE EIBAID
+
+              WHEN DFHENTER
+                   PERFORM RECIEVE-PARA
+
+              WHEN DFHPF8
+                   PERFORM NEXT-PAGE
+
+              WHEN DFHPF7
+                   PERFORM PREV-PAGE
+              WHEN DFHPF3
+                   MOVE 'X' TO MU-SCREEN
+                   MOVE CA-ACCNO  TO MU-ACCNO
+                   EXEC CICS XCTL PROGRAM('PMMNU')
+                                  COMMAREA(MU-REC)
+                                  LENGTH(6)
+                   END-EXEC
+           END-EVALUATE
+
+           PERFORM DISPLAY-PARA
+      *    MOVE ACC-NO  TO CA-ACCNO
+      *    MOVE CARD-NO TO CA-CARDNO
+           EXEC CICS RETURN
+                TRANSID('TTRH')
+                COMMAREA(DFHCOMMAREA)
+           END-EXEC
+           END-IF.
+       RECIEVE-PARA.
+           EXEC CICS RECEIVE MAP('TTRH')
+                             MAPSET('TTRH')
+           END-EXEC
+           PERFORM ACC-VALIDATION
+           PERFORM LOAD-TSQ
+           PERFORM GET-TOTALS.
+       ACC-VALIDATION.
+           MOVE CA-ACCNO  TO ACC-NO
+           EXEC CICS READ FILE('ACCFL')
+                          RIDFLD(ACC-NO)
+                          INTO(ACC-REC)
+                          RESP(WS-RESP)
+           END-EXEC
+           IF WS-RESP = DFHRESP(NORMAL)
+              MOVE CURR-BALANCE TO CBALO
+              MOVE OTB TO OTBO
+      *       IF CARD-NO = CA-CARDNO
+                 CONTINUE
+      *       ELSE
+      *       MOVE 'CARDID IS NOT YOURS' TO MSGO
+      *       EXEC CICS SEND MAP('CMPH') MAPSET('CMPH')   ERASE
+      *       END-EXEC
+      *       EXEC CICS RETURN
+      *                 TRANSID('TCPH')
+      *                 COMMAREA(DFHCOMMAREA)
+      *                 LENGTH(LENGTH OF DFHCOMMAREA)
+      *       END-EXEC
+           ELSE
+              MOVE 'ACCNUMBER NOT FOUND' TO MSGO
+              EXEC CICS SEND MAP('TTRH') MAPSET('TTRH')   ERASE
+              END-EXEC
+              EXEC CICS RETURN
+                        TRANSID('TTRH')
+                        COMMAREA(DFHCOMMAREA)
+                        LENGTH(LENGTH OF DFHCOMMAREA)
+              END-EXEC.
+      *----------------------------------------------------------------*
+      * LOAD FILE INTO TSQ (ONLY FIRST TIME)
+      *----------------------------------------------------------------*
+       LOAD-TSQ.
+
+           MOVE 0 TO CA-TOTAL
+
+           EXEC CICS DELETEQ TS
+                QUEUE(WS-TSQ-NAME)
+                RESP(WS-RESP)
+           END-EXEC
+
+           MOVE CA-ACCNO  TO TRANS-ID(1:6)
+      * WTRANSFL IS A COLLECTION OF WHOLE DAYS PAYMENTS BOTH AG AND ONLI
+      * TRANSID = LOANID + DDMM
+              EXEC CICS STARTBR
+                              FILE('TRANSFL2')
+                              RIDFLD(TRANS-ID)
+                              KEYLENGTH(5)
+                              GENERIC
+                              RESP(WS-RESP)
+              END-EXEC
+              EXEC CICS READNEXT
+                           FILE('TRANSFL2')
+                           RIDFLD(TRANS-ID)
+                           KEYLENGTH(5)
+                           INTO(TRANS-REC)
+                           RESP(WS-RESP)
+              END-EXEC
+              MOVE 'N' TO EOF
+           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL EOF = 'Y'
+           EXEC CICS SEND TEXT FROM (ACC-NO) LENGTH(5) END-EXEC
+           EXEC CICS SEND TEXT FROM (TRANS-ID) LENGTH(11) END-EXEC
+             IF ACC-NO = TRANS-ID(1:5)
+              MOVE TYPE1 TO WS-TYPE
+              MOVE AMOUNT  TO WS-AMOUNT
+              MOVE TRANS-ID(6:2)  TO WS-DATE(1:2)
+              MOVE '/' TO WS-DATE(3:1)
+              MOVE TRANS-ID(8:2) TO WS-DATE(4:2)
+              MOVE '/' TO WS-DATE(6:1)
+              MOVE '2026' TO WS-DATE(7:4)
+              MOVE TRANS-ID TO WS-TRANSID
+              EXEC CICS WRITEQ TS
+                   QUEUE(WS-TSQ-NAME)
+                   FROM(WS-REC)
+                   ITEM(WS-I)
+                   MAIN
+              END-EXEC
+
+               EXEC CICS READNEXT
+                            FILE('TRANSFL2')
+                            RIDFLD(TRANS-ID)
+                            KEYLENGTH(5)
+                            INTO(TRANS-REC)
+                            RESP(WS-RESP)
+               END-EXEC
+               IF WS-RESP = DFHRESP(ENDFILE)
+                   MOVE 'Y' TO EOF
+                      EXEC CICS ENDBR
+                                FILE('TRANSFL2')
+                                RESP(WS-RESP)
+                      END-EXEC
+               END-IF
+              ADD 1 TO CA-TOTAL
+           ELSE
+              MOVE 'Y' TO EOF
+           END-IF
+           END-PERFORM
+           MOVE 'N' TO EOF.
+      *----------------------------------------------------------------*
+      * DISPLAY PAGE (10 RECORDS)
+      *----------------------------------------------------------------*
+       DISPLAY-PARA.
+
+      *    MOVE CA-LOANID TO LOANIDO
+           MOVE CA-ACCNO  TO ACCNOI
+           MOVE CA-INDEX TO WS-TEMP-INDEX
+
+           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 10
+                                            OR EOD = 'Y'
+              EXEC CICS READQ TS
+                   QUEUE(WS-TSQ-NAME)
+                   ITEM(WS-TEMP-INDEX)
+                   INTO(WS-REC)
+                   RESP(WS-RESP)
+              END-EXEC
+
+              IF WS-RESP NOT = DFHRESP(NORMAL)
+                 MOVE 'Y' TO EOD
+
+              ELSE
+                 EXEC CICS SEND TEXT FROM(WS-REC) LENGTH(40) END-EXEC
+              EVALUATE WS-I
+                 WHEN 1
+                    MOVE WS-DATE TO DATE1O
+                    MOVE WS-TRANSID TO TXNID1O
+                    MOVE WS-AMOUNT   TO AMT1O
+                    MOVE WS-TYPE   TO TYPE1O
+                 EXEC CICS SEND TEXT FROM(TXNID1O) LENGTH(11) END-EXEC
+                 WHEN 2
+                    MOVE WS-DATE TO DATE2O
+                    MOVE WS-TRANSID TO TXNID2O
+                    MOVE WS-AMOUNT   TO AMT2O
+                    MOVE WS-TYPE   TO TYPE2O
+                 EXEC CICS SEND TEXT FROM(DATE2O) LENGTH(11) END-EXEC
+                 EXEC CICS SEND TEXT FROM(TYPE2O) LENGTH(11) END-EXEC
+                 WHEN 3
+                    MOVE WS-DATE TO DATE3O
+                    MOVE WS-TRANSID TO TXNID3O
+                    MOVE WS-AMOUNT   TO AMT3O
+                    MOVE WS-TYPE   TO TYPE3O
+                 EXEC CICS SEND TEXT FROM(DATE3O) LENGTH(11) END-EXEC
+                 EXEC CICS SEND TEXT FROM(TYPE3O) LENGTH(11) END-EXEC
+                 WHEN 4
+                    MOVE WS-DATE TO DATE4O
+                    MOVE WS-TRANSID TO TXNID4O
+                    MOVE WS-AMOUNT   TO AMT4O
+                    MOVE WS-TYPE   TO TYPE4O
+                 EXEC CICS SEND TEXT FROM(TYPE4O) LENGTH(11) END-EXEC
+                 WHEN 5
+                    MOVE WS-DATE TO DATE5O
+                    MOVE WS-TRANSID TO TXNID5O
+                    MOVE WS-AMOUNT   TO AMT5O
+                    MOVE WS-TYPE   TO TYPE5O
+                 EXEC CICS SEND TEXT FROM(TYPE5O) LENGTH(11) END-EXEC
+                 WHEN 6
+                    MOVE WS-DATE TO DATE6O
+                    MOVE WS-TRANSID TO TXNID6O
+                    MOVE WS-AMOUNT   TO AMT6O
+                    MOVE WS-TYPE   TO TYPE6O
+                 WHEN 7
+                    MOVE WS-DATE TO DATE7O
+                    MOVE WS-TRANSID TO TXNID7O
+                    MOVE WS-AMOUNT   TO AMT7O
+                    MOVE WS-TYPE   TO TYPE7O
+                 WHEN 8
+                    MOVE WS-DATE TO DATE8O
+                    MOVE WS-TRANSID TO TXNID8O
+                    MOVE WS-AMOUNT   TO AMT8O
+                    MOVE WS-TYPE   TO TYPE8O
+                 WHEN 9
+                    MOVE WS-DATE TO DATE9O
+                    MOVE WS-TRANSID TO TXNID9O
+                    MOVE WS-AMOUNT   TO AMT9O
+                    MOVE WS-TYPE   TO TYPE9O
+                 WHEN 10
+                    MOVE WS-DATE TO DATE10O
+                    MOVE WS-TRANSID TO TXNID10O
+                    MOVE WS-AMOUNT   TO AMT10O
+                    MOVE WS-TYPE   TO TYPE10O
+              END-EVALUATE
+
+              ADD 1 TO WS-TEMP-INDEX
+             END-IF
+           END-PERFORM
+
+           EXEC CICS SEND MAP('TTRH') MAPSET('TTRH')
+           END-EXEC
+           EXEC CICS RETURN
+                     TRANSID('TTRH')
+                     COMMAREA(DFHCOMMAREA)
+                     LENGTH(LENGTH OF DFHCOMMAREA)
+           END-EXEC.
+      *----------------------------------------------------------------*
+      * NEXT PAGE
+      *----------------------------------------------------------------*
+       NEXT-PAGE.
+
+           IF CA-INDEX + 10 > CA-TOTAL
+              MOVE 'REACHED BOTTOM' TO MSGO
+              CONTINUE
+           ELSE
+              MOVE SPACES TO DATE1O TXNID1O AMT1O TYPE1O
+              DATE2O TXNID2O AMT2O TYPE2O DATE3O TXNID3O AMT3O TYPE3O
+              DATE4O TXNID4O AMT4O TYPE4O DATE5O TXNID5O AMT5O TYPE5O
+              DATE6O TXNID6O AMT6O TYPE6O DATE7O TXNID7O AMT7O TYPE7O
+              DATE8O TXNID8O AMT8O TYPE8O DATE9O TXNID9O AMT9O TYPE9O
+              DATE10O TXNID10O  AMT10O TYPE10O  MSGO
+              ADD 10 TO CA-INDEX
+           END-IF.
+      *    PERFORM DISPLAY-PARA.
+      *----------------------------------------------------------------*
+      * PREVIOUS PAGE
+      *----------------------------------------------------------------*
+
+       PREV-PAGE.
+
+           IF CA-INDEX - 10 < 1
+              MOVE 'REACHED TOP' TO MSGO
+              CONTINUE
+           ELSE
+              MOVE SPACES TO DATE1O TXNID1O AMT1O TYPE1O
+              DATE2O TXNID2O AMT2O TYPE2O DATE3O TXNID3O AMT3O TYPE3O
+              DATE4O TXNID4O AMT4O TYPE4O DATE5O TXNID5O AMT5O TYPE5O
+              DATE6O TXNID6O AMT6O TYPE6O DATE7O TXNID7O AMT7O TYPE7O
+              DATE8O TXNID8O AMT8O TYPE8O DATE9O TXNID9O AMT9O TYPE9O
+              DATE10O TXNID10O  AMT10O TYPE10O  MSGO
+              SUBTRACT 10 FROM CA-INDEX
+           END-IF.
+       GET-TOTALS.
+      *    READ LOAN FILE AND GET TOTALS
+      *    MOVE THESE TOTALS TO MAP AND DFHCOMMAREA
+

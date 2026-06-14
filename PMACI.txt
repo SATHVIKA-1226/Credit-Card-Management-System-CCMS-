@@ -1,0 +1,327 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. MACIPGM.
+
+       DATA DIVISION.
+
+       WORKING-STORAGE SECTION.
+
+       COPY DFHAID.
+       COPY MACI.
+
+       01 WS-RESP                 PIC S9(8) COMP.
+       01 WS-TIME                 PIC S9(15) COMP-3.
+       01 WS-DATE                 PIC X(10).
+
+       01 WS-ACCNO                PIC X(5).
+
+      *=================================================*
+      * BANK FILE RECORD
+      *=================================================*
+
+       01 BANK-REC.
+          05 BK-ACCNO            PIC X(5).
+          05 BK-NAME             PIC X(10).
+          05 BK-CARDNO           PIC X(16).
+          05 BK-CURRBAL          PIC 9(8).
+          05 BK-CRLIMIT          PIC 9(8).
+          05 BK-OTB              PIC 9(8).
+          05 BK-EXPIRY           PIC X(5).
+          05 BK-CVV              PIC 9(3).
+          05 BK-DUE-DAYS         PIC X(2).
+          05 BK-MINDUE           PIC 9(8).
+          05 BK-BILLDATE         PIC X(10).
+          05 BK-PAYDATE          PIC X(10).
+          05 BK-CARDTYPE         PIC X(1).
+          05 CARD-STATUS         PIC X.
+          05 FILLER              PIC X(5).
+      *=================================================*
+      * CARD FILE RECORD
+      *=================================================*
+
+       01 CARD-REC.
+
+          05 CARDNO               PIC X(16).
+
+          05 PURCHASE-PLAN.
+             10 PUR-PRINC         PIC 9(08).
+             10 PUR-INT           PIC 9(06).
+             10 PUR-LATE          PIC 9(06).
+             10 PUR-TOTAL         PIC 9(08).
+
+          05 CASH-PLAN.
+             10 CASH-PRINC        PIC 9(08).
+             10 CASH-INT          PIC 9(06).
+             10 CASH-LATE         PIC 9(06).
+             10 CASH-TOTAL        PIC 9(08).
+
+          05 EMI-PLAN.
+             10 EMI-PRINC         PIC 9(08).
+             10 EMI-INT           PIC 9(06).
+             10 EMI-LATE          PIC 9(06).
+             10 EMI-TOTAL         PIC 9(08).
+             10 EMI-TENURE        PIC 99.
+          05 CURR-BAL             PIC 9(10).
+       PROCEDURE DIVISION.
+
+      *=================================================*
+      * MAIN LOGIC
+      *=================================================*
+
+       MAIN-PARA.
+
+      *-----------------------------------------*
+      * FIRST TIME ENTRY
+      *-----------------------------------------*
+
+           IF EIBCALEN = 0
+              MOVE LOW-VALUES TO MACIO
+              PERFORM INITIAL-SCREEN
+
+           ELSE
+      *--------------------------------------*
+      * RECEIVE SCREEN
+      *--------------------------------------*
+
+              EXEC CICS RECEIVE
+                   MAP('MACI')
+                   MAPSET('MACI')
+                   INTO(MACII)
+              END-EXEC
+
+      *--------------------------------------*
+      * PF3 EXIT
+      *--------------------------------------*
+
+              IF EIBAID = DFHPF3
+
+                 EXEC CICS XCTL PROGRAM('PMMNU')
+                 END-EXEC
+                 GO TO END-PGM
+              END-IF
+
+
+      *--------------------------------------*
+      * GET ACCOUNT NUMBER
+      *--------------------------------------*
+
+              MOVE ACCNOII TO WS-ACCNO
+
+      *--------------------------------------*
+      * PROCESS
+      *--------------------------------------*
+
+              PERFORM VALIDATE-INPUT
+              PERFORM READ-BANK-FILE
+              PERFORM READ-CARD-FILE
+              PERFORM SEND-SCREEN
+
+           END-IF.
+
+      *=================================================*
+      * INITIAL SCREEN
+      *=================================================*
+
+       INITIAL-SCREEN.
+
+      *-----------------------------------------*
+      * GET CURRENT DATE
+      *-----------------------------------------*
+
+           EXEC CICS ASKTIME
+                ABSTIME(WS-TIME)
+           END-EXEC
+
+           EXEC CICS FORMATTIME
+                ABSTIME(WS-TIME)
+                DDMMYYYY(WS-DATE)
+                DATESEP('/')
+           END-EXEC
+
+           MOVE WS-DATE TO DATEIO
+
+      *-----------------------------------------*
+      * SEND EMPTY SCREEN
+      *-----------------------------------------*
+
+           EXEC CICS SEND
+                MAP('MACI')
+                MAPSET('MACI')
+                FROM(MACIO)
+                FREEKB
+                ERASE
+                CURSOR
+           END-EXEC
+
+      *-----------------------------------------*
+      * RETURN TO SAME TRANS
+      *-----------------------------------------*
+
+           EXEC CICS RETURN
+                TRANSID('TACI')
+                COMMAREA(WS-ACCNO)
+                LENGTH(LENGTH OF WS-ACCNO)
+           END-EXEC.
+
+      *=================================================*
+      * VALIDATE INPUT
+      *=================================================*
+
+       VALIDATE-INPUT.
+
+           IF WS-ACCNO = SPACES
+
+              MOVE 'ENTER ACCOUNT NUMBER'
+                   TO MSGO
+
+              PERFORM SEND-SCREEN
+
+           END-IF
+
+           IF WS-ACCNO IS NOT NUMERIC
+
+              MOVE 'INVALID ACCOUNT NUMBER'
+                   TO MSGO
+
+              PERFORM SEND-SCREEN
+
+           END-IF.
+
+      *=================================================*
+      * READ BANK FILE
+      *=================================================*
+
+       READ-BANK-FILE.
+
+           MOVE WS-ACCNO TO BK-ACCNO
+
+           EXEC CICS READ
+                FILE('BANKFL')
+                INTO(BANK-REC)
+                LENGTH(LENGTH OF BANK-REC)
+                RIDFLD(BK-ACCNO)
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP = DFHRESP(NOTFND)
+
+              MOVE 'ACCOUNT NOT FOUND'
+                   TO MSGO
+
+              PERFORM SEND-SCREEN
+
+           END-IF
+
+      *-----------------------------------------*
+      * MOVE BANK DETAILS TO MAP
+      *-----------------------------------------*
+
+           MOVE BK-ACCNO       TO ACCNOIO
+           MOVE BK-CARDNO      TO CARDNOIO
+           MOVE BK-CARDTYPE    TO CTYPEIO
+           MOVE BK-CRLIMIT     TO CLIMITIO
+           MOVE BK-EXPIRY      TO EXPIO
+           MOVE BK-OTB         TO OTBIO
+           MOVE BK-MINDUE      TO MINDUEIO
+           MOVE BK-BILLDATE    TO BILLDTIO
+           MOVE BK-CURRBAL     TO CURBALIO
+           MOVE BK-PAYDATE     TO PAYDTIO.
+
+      *=================================================*
+      * READ CARD FILE
+      *=================================================*
+
+       READ-CARD-FILE.
+           MOVE BK-CARDNO TO CARDNO
+
+           EXEC CICS READ
+                FILE('CARDFL')
+                INTO(CARD-REC)
+                LENGTH(LENGTH OF CARD-REC)
+                RIDFLD(CARDNO)
+                RESP(WS-RESP)
+           END-EXEC
+
+           IF WS-RESP = DFHRESP(NOTFND)
+
+              MOVE 'CARD DETAILS NOT FOUND'
+                   TO MSGO
+
+              PERFORM SEND-SCREEN
+
+           END-IF
+
+      *-----------------------------------------*
+      * PURCHASE PLAN
+      *-----------------------------------------*
+
+           MOVE PUR-PRINC      TO PRI1O
+           MOVE PUR-INT        TO INT1O
+           MOVE PUR-LATE       TO LFE1O
+           MOVE PUR-TOTAL      TO TOT1O
+
+      *-----------------------------------------*
+      * CASH PLAN
+      *-----------------------------------------*
+
+           MOVE CASH-PRINC     TO PRI2O
+           MOVE CASH-INT       TO INT2O
+           MOVE CASH-LATE      TO LFE2O
+           MOVE CASH-TOTAL     TO TOT2O
+
+      *-----------------------------------------*
+      * EMI PLAN
+      *-----------------------------------------*
+
+           MOVE EMI-PRINC      TO PRI3O
+           MOVE EMI-INT        TO INT3O
+           MOVE EMI-LATE       TO LFE3O
+           MOVE EMI-TOTAL      TO TOT3O.
+
+      *=================================================*
+      * SEND SCREEN
+      *=================================================*
+
+       SEND-SCREEN.
+
+      *-----------------------------------------*
+      * GET CURRENT DATE
+      *-----------------------------------------*
+
+           EXEC CICS ASKTIME
+                ABSTIME(WS-TIME)
+           END-EXEC
+
+           EXEC CICS FORMATTIME
+                ABSTIME(WS-TIME)
+                DDMMYYYY(WS-DATE)
+                DATESEP('/')
+           END-EXEC
+
+           MOVE WS-DATE TO DATEIO
+
+      *-----------------------------------------*
+      * SEND MAP
+      *-----------------------------------------*
+           EXEC CICS SEND
+                MAP('MACI')
+                MAPSET('MACI')
+                FROM(MACIO)
+                FREEKB
+                ERASE
+                CURSOR
+           END-EXEC
+
+      *-----------------------------------------*
+      * RETURN TO SAME TRANS
+      *-----------------------------------------*
+
+           EXEC CICS RETURN
+                TRANSID('TACI')
+                COMMAREA(WS-ACCNO)
+                LENGTH(LENGTH OF WS-ACCNO)
+           END-EXEC.
+       END-PGM.
+           EXEC CICS RETURN
+           END-EXEC.
+
+

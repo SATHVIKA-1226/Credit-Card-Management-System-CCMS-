@@ -1,0 +1,76 @@
+MAPF    DFHMSD TYPE=MAP,MODE=INOUT,LANG=COBOL,STORAGE=AUTO,            X
+               TIOAPFX=YES,CTRL=FREEKB,DSATTS=(COLOR,HILIGHT),         X
+               MAPATTS=(COLOR,HILIGHT)
+
+MAPF     DFHMDI SIZE=(24,80),LINE=1,COLUMN=1
+
+         DFHMDF POS=(1,1),LENGTH=80,ATTRB=PROT,                        X
+               INITIAL='-----------------------------------------------X--------
+                --------------------------------'
+
+         DFHMDF POS=(2,20),LENGTH=40,ATTRB=(PROT,BRT),                 X
+               INITIAL='CUSTOMER APPLICATION FORM'
+
+         DFHMDF POS=(2,64),LENGTH=5,ATTRB=(PROT,BRT),INITIAL='DATE:'
+DATEI    DFHMDF POS=(2,70),LENGTH=10,ATTRB=(PROT,BRT),HILIGHT=UNDERLINE
+         DFHMDF POS=(3,1),LENGTH=80,ATTRB=PROT,                        X
+               INITIAL='-----------------------------------------------X--------
+                --------------------------------'
+
+         DFHMDF POS=(5,5),LENGTH=18,ATTRB=PROT,                        X
+               INITIAL='Name            :'
+
+NAMEI    DFHMDF POS=(5,24),LENGTH=20,ATTRB=(UNPROT,IC),                X
+               HILIGHT=UNDERLINE
+         DFHMDF POS=(5,45),LENGTH=1,ATTRB=ASKIP
+
+
+         DFHMDF POS=(7,5),LENGTH=18,ATTRB=PROT,                        X
+               INITIAL='Date of Birth   :'
+
+DOBI     DFHMDF POS=(7,24),LENGTH=10,ATTRB=UNPROT,HILIGHT=UNDERLINE
+         DFHMDF POS=(7,36),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(9,5),LENGTH=18,ATTRB=PROT,                        X
+               INITIAL='PAN Number      :'
+PANI     DFHMDF POS=(9,24),LENGTH=10,ATTRB=UNPROT,HILIGHT=UNDERLINE
+         DFHMDF POS=(9,36),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(11,5),LENGTH=18,ATTRB=PROT,                       X
+               INITIAL='Mobile Number   :'
+MOBI     DFHMDF POS=(11,24),LENGTH=10,HILIGHT=UNDERLINE,               X
+               ATTRB=(UNPROT,NUM)
+         DFHMDF POS=(11,36),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(13,5),LENGTH=18,ATTRB=PROT,                       X
+               INITIAL='Address         :'
+ADDRI    DFHMDF POS=(13,24),LENGTH=10,ATTRB=UNPROT,HILIGHT=UNDERLINE
+         DFHMDF POS=(13,36),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(15,5),LENGTH=18,ATTRB=PROT,                       X
+               INITIAL='Annual Income   :'
+INCI     DFHMDF POS=(15,24),LENGTH=8,HILIGHT=UNDERLINE,                X
+               ATTRB=(UNPROT,NUM)
+         DFHMDF POS=(15,33),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(17,5),LENGTH=40,ATTRB=PROT,                       X
+               INITIAL='Card: 1.Master  2.Visa  3.Rupay  Option:'
+CARDI    DFHMDF POS=(17,46),LENGTH=1,HILIGHT=UNDERLINE,                X
+               ATTRB=(UNPROT,NUM)
+         DFHMDF POS=(17,48),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(20,5),LENGTH=8,ATTRB=PROT,                        X
+               INITIAL='Status :'
+STATUSO  DFHMDF POS=(20,14),LENGTH=25,ATTRB=PROT,HILIGHT=UNDERLINE
+         DFHMDF POS=(20,40),LENGTH=1,ATTRB=ASKIP
+
+         DFHMDF POS=(22,1),LENGTH=80,ATTRB=PROT,                       X
+               INITIAL='-----------------------------------------------X--------
+                --------------------------------'
+
+         DFHMDF POS=(23,5),LENGTH=50,ATTRB=PROT,                       X
+               INITIAL='ENTER=Continue   PF3=Back'
+
+         DFHMSD TYPE=FINAL
+                END
+

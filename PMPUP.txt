@@ -1,0 +1,171 @@
+       IDENTIFICATION DIVISION.                                         00010000
+       PROGRAM-ID. MPUPRG.                                              00020000
+       DATA DIVISION.                                                   00030000
+       WORKING-STORAGE SECTION.                                         00040000
+       COPY DFHAID.                                                     00050000
+       COPY MPUP.                                                       00060000
+       01 WS-AID        PIC X.                                          00070000
+       01 WS-RESP       PIC S9(8) COMP.                                 00080000
+                                                                        00090000
+       01 WS-LEN        PIC S9(4) COMP VALUE 100.                       00100000
+                                                                        00110000
+       01 WS-OLDPIN     PIC X(4).                                       00120000
+       01 WS-NEWPIN     PIC X(4).                                       00130000
+       01 WS-CONPIN     PIC X(4).                                       00140000
+       01 WS-ACCNO      PIC X(5).                                       00150000
+                                                                        00160000
+       01 WS-COMMAREA   PIC X(5).                                       00170000
+       01 WS-COMM-LEN   PIC S9(4) COMP VALUE 5.                         00180000
+                                                                        00190000
+       01 WS-ABSTIME    PIC S9(15) COMP-3.                              00200000
+       01 WS-DATE       PIC X(10).                                      00210000
+                                                                        00220000
+       01 ACC-REC.                                                      00230000
+          05 A-ACCNO    PIC X(5).                                       00240000
+          05 A-PIN      PIC X(4).                                       00250000
+          05 FILLER     PIC X(71).                                      00260000
+                                                                        00270000
+       LINKAGE SECTION.                                                 00280000
+       01 DFHCOMMAREA   PIC X(100).                                     00290000
+                                                                        00300000
+       PROCEDURE DIVISION USING DFHCOMMAREA.                            00310000
+                                                                        00320000
+       MAIN-PARA.                                                       00330000
+                                                                        00340000
+           MOVE EIBAID TO WS-AID                                        00350000
+                                                                        00360000
+           IF EIBCALEN = 0                                              00370000
+              MOVE DFHCOMMAREA(1:5) TO WS-ACCNO                         00380000
+              PERFORM INIT-SCREEN                                       00390000
+           ELSE                                                         00400000
+              MOVE DFHCOMMAREA(1:5) TO WS-ACCNO                         00410000
+              PERFORM RECEIVE-SCREEN                                    00420000
+              PERFORM PROCESS-LOGIC                                     00430000
+           END-IF                                                       00440000
+                                                                        00450000
+           EXEC CICS RETURN                                             00460000
+                TRANSID('TPUP')                                         00470001
+                COMMAREA(WS-ACCNO)                                      00480000
+                LENGTH(WS-COMM-LEN)                                     00490000
+           END-EXEC.                                                    00500000
+                                                                        00510000
+      *--------------------------------------------*                    00520000
+       INIT-SCREEN.                                                     00530000
+                                                                        00540000
+           MOVE LOW-VALUES TO MPUPO                                     00550000
+           PERFORM SEND-SCREEN.                                         00560000
+                                                                        00570000
+      *--------------------------------------------*                    00580000
+       RECEIVE-SCREEN.                                                  00590000
+                                                                        00600000
+           EXEC CICS RECEIVE                                            00610000
+                MAP('MPUP')                                             00620000
+                MAPSET('MPUP')                                          00630000
+                INTO(MPUPI)                                             00640000
+           END-EXEC                                                     00650000
+                                                                        00660000
+           MOVE OLDPNI TO WS-OLDPIN                                     00670000
+           MOVE NEWPNI TO WS-NEWPIN                                     00680000
+           MOVE CONPNI TO WS-CONPIN                                     00690000
+           MOVE ACCNOI TO WS-ACCNO.                                     00700000
+      *--------------------------------------------*                    00710000
+       PROCESS-LOGIC.                                                   00720000
+                                                                        00730000
+           EVALUATE WS-AID                                              00740000
+                                                                        00750000
+             WHEN DFHENTER                                              00760000
+                                                                        00770000
+                IF WS-OLDPIN = SPACES OR                                00780000
+                   WS-NEWPIN = SPACES OR                                00790000
+                   WS-CONPIN = SPACES                                   00800000
+                   MOVE 'ENTER ALL' TO MSGO                             00810000
+                   PERFORM SEND-SCREEN                                  00820000
+                ELSE                                                    00830000
+                   IF WS-OLDPIN NOT NUMERIC OR                          00840000
+                      WS-NEWPIN NOT NUMERIC OR                          00850000
+                      WS-CONPIN NOT NUMERIC                             00860000
+                      MOVE 'ENTER PROPER VALID PIN NUMBER' TO MSGO      00870000
+                      PERFORM SEND-SCREEN                               00880000
+                   ELSE                                                 00890000
+                      PERFORM READ-FILE                                 00900000
+                                                                        00910000
+                      IF WS-RESP = DFHRESP(NORMAL)                      00920000
+                         PERFORM VALIDATE-PIN                           00930000
+                      ELSE                                              00940000
+                         MOVE 'NO ACC' TO MSGO                          00950000
+                      END-IF                                            00960000
+                                                                        00970000
+                      PERFORM SEND-SCREEN                               00980000
+                   END-IF                                               00990000
+                END-IF                                                  01000000
+             WHEN DFHPF3                                                01010000
+                EXEC CICS XCTL PROGRAM('PMMNU')                         01020001
+                END-EXEC                                                01030001
+             WHEN OTHER                                                 01040000
+                PERFORM SEND-SCREEN                                     01050000
+                                                                        01060000
+           END-EVALUATE.                                                01070000
+                                                                        01080000
+      *--------------------------------------------*                    01090000
+       READ-FILE.                                                       01100000
+                                                                        01110000
+           MOVE WS-ACCNO TO A-ACCNO                                     01120000
+                                                                        01130000
+           EXEC CICS READ                                               01140000
+                FILE('ACCFILE')                                         01150000
+                INTO(ACC-REC)                                           01160000
+                RIDFLD(A-ACCNO)                                         01170000
+                UPDATE                                                  01180000
+                RESP(WS-RESP)                                           01190000
+           END-EXEC.                                                    01200000
+                                                                        01210000
+      *--------------------------------------------*                    01220000
+       VALIDATE-PIN.                                                    01230000
+                                                                        01240000
+           IF WS-NEWPIN NOT = WS-CONPIN                                 01250000
+              MOVE 'NOT MATCH' TO MSGO                                  01260000
+                                                                        01270000
+           ELSE IF WS-OLDPIN NOT = A-PIN                                01280000
+              MOVE 'WRONG OLD' TO MSGO                                  01290000
+                                                                        01300000
+           ELSE                                                         01310000
+              MOVE WS-NEWPIN TO A-PIN                                   01320000
+                                                                        01330000
+              EXEC CICS REWRITE                                         01340000
+                   FILE('ACCFILE')                                      01350000
+                   FROM(ACC-REC)                                        01360000
+                   RESP(WS-RESP)                                        01370000
+              END-EXEC                                                  01380000
+                                                                        01390000
+              IF WS-RESP = DFHRESP(NORMAL)                              01400000
+                 MOVE 'UPDATED' TO MSGO                                 01410000
+              ELSE                                                      01420000
+                 MOVE 'ERROR' TO MSGO                                   01430000
+              END-IF                                                    01440000
+                                                                        01450000
+           END-IF.                                                      01460000
+                                                                        01470000
+      *--------------------------------------------*                    01480000
+       SEND-SCREEN.                                                     01490000
+                                                                        01500000
+           EXEC CICS ASKTIME                                            01510000
+                ABSTIME(WS-ABSTIME)                                     01520000
+           END-EXEC                                                     01530000
+                                                                        01540000
+           EXEC CICS FORMATTIME                                         01550000
+                ABSTIME(WS-ABSTIME)                                     01560000
+                DDMMYY(WS-DATE)                                         01570000
+                DATESEP('/')                                            01580000
+           END-EXEC                                                     01590000
+                                                                        01600000
+           MOVE WS-DATE TO DATEO                                        01610000
+                                                                        01620000
+           EXEC CICS SEND                                               01630000
+                MAP('MPUP')                                             01640000
+                MAPSET('MPUP')                                          01650000
+                FROM(MPUPO)                                             01660000
+                FREEKB                                                  01670000
+                ERASE                                                   01680000
+                CURSOR                                                  01690000
+           END-EXEC.                                                    01700000
+

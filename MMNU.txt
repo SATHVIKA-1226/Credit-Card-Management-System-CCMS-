@@ -1,0 +1,40 @@
+MMNU    DFHMSD TYPE=MAP,MODE=INOUT,LANG=COBOL,STORAGE=AUTO,            X
+               TIOAPFX=YES,CTRL=FREEKB,DSATTS=(COLOR,HILIGHT),         X
+               MAPATTS=(COLOR,HILIGHT)
+MMNU    DFHMDI SIZE=(24,80),LINE=1,COLUMN=1
+        DFHMDF POS=(3,2),LENGTH=75,ATTRB=(PROT),INITIAL='--------------X
+               --------------------------------------------------------X
+               ---------------------'
+        DFHMDF POS=(5,30),LENGTH=15,                                   X
+               INITIAL='MAIN MENU'
+        DFHMDF POS=(5,60),LENGTH=05,                                   X
+               INITIAL='DATE:'
+DATE    DFHMDF POS=(5,66),LENGTH=10,ATTRB=PROT
+        DFHMDF POS=(7,2),LENGTH=75,ATTRB=(PROT),INITIAL='--------------X
+               --------------------------------------------------------X
+               ---------------------'
+        DFHMDF POS=(9,10),LENGTH=30,                                   X
+               INITIAL='1. ACCOUNT INFORMATION',ATTRB=(PROT)
+        DFHMDF POS=(9,45),LENGTH=10,ATTRB=ASKIP
+        DFHMDF POS=(11,10),LENGTH=25,                                  X
+               INITIAL='2. MAKE TRANSACTION',ATTRB=(PROT)
+        DFHMDF POS=(11,45),LENGTH=37,ATTRB=ASKIP
+        DFHMDF POS=(13,10),LENGTH=10,                                  X
+               INITIAL='3. PAY BILL',ATTRB=(PROT)
+        DFHMDF POS=(13,45),LENGTH=25,ATTRB=ASKIP
+        DFHMDF POS=(15,10),LENGTH=30,                                  X
+               INITIAL='4. TRANSACTION HISTORY',ATTRB=(PROT)
+        DFHMDF POS=(15,45),LENGTH=15,ATTRB=ASKIP
+        DFHMDF POS=(17,10),LENGTH=20,                                  X
+               INITIAL='5. PASSWORD UPDATE',ATTRB=(PROT)
+        DFHMDF POS=(17,45),LENGTH=35,ATTRB=ASKIP
+        DFHMDF POS=(19,10),LENGTH=17,                                  X
+               INITIAL='SELECT OPTION ==>'
+OPTION  DFHMDF POS=(19,28),LENGTH=1,ATTRB=(UNPROT,IC)
+        DFHMDF POS=(19,30),LENGTH=20,ATTRB=ASKIP
+        DFHMDF POS=(22,5),LENGTH=50,                                   X
+               INITIAL='PF1=HELP   PF3=EXIT   PF5=REFRESH'
+MSGFLD  DFHMDF POS=(23,5),LENGTH=60,ATTRB=(PROT)
+        DFHMSD TYPE=FINAL
+               END
+

@@ -1,0 +1,187 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. PAYPROSS.
+
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+
+           SELECT TXNFILE ASSIGN TO TXNFILE
+               ORGANIZATION IS INDEXED
+               ACCESS MODE IS SEQUENTIAL
+               RECORD KEY IS TXN-ID.
+
+           SELECT ACCFILE ASSIGN TO ACCFILE
+               ORGANIZATION IS INDEXED
+               ACCESS MODE IS RANDOM
+               RECORD KEY IS ACCNO.
+
+           SELECT CARDFILE ASSIGN TO CARDFILE
+               ORGANIZATION IS INDEXED
+               ACCESS MODE IS RANDOM
+               RECORD KEY IS CARDNO.
+
+       DATA DIVISION.
+       FILE SECTION.
+
+      * TRANSACTION FILE
+       FD  TXNFILE.
+       01  TXN-REC.
+           05 TXN-ID        PIC X(20).
+           05 TXN-DATE      PIC X(8).
+           05 TXN-AMT       PIC 9(10).
+           05 TXN-TYPE      PIC X(10).
+
+      * ACCOUNT FILE
+       FD  ACCFILE.
+       01  ACC-REC.
+           05 ACCNO         PIC X(12).
+           05 CARDNO1       PIC X(16).
+           05 FILLER        PIC X(30).
+           05 BILL-DATE     PIC X(10).
+           05 UEST          PIC X(40).
+      * CARD FILE (ALL PLAN BALANCES)
+       FD CARDFILE.
+       01 CARD-REC.
+          05 CARDNO        PIC X(16).
+
+      * PURCHASE PLAN
+          05 PUR-PRINC     PIC 9(08).
+          05 PUR-INT       PIC 9(06).
+          05 PUR-LATE      PIC 9(06).
+          05 PUR-TOTAL     PIC 9(08).
+
+      * CASH PLAN
+          05 CASH-PRINC    PIC 9(08).
+          05 CASH-INT      PIC 9(06).
+          05 CASH-LATE     PIC 9(06).
+          05 CASH-TOTAL    PIC 9(08).
+
+      * EMI PLAN
+          05 EMI-PRINC     PIC 9(08).
+          05 EMI-INT       PIC 9(06).
+          05 EMI-LATE      PIC 9(06).
+          05 EMI-TOTAL     PIC 9(08).
+          05 EMI-TENURE    PIC 9(2).
+      * OVERALL BALANCE
+          05 CURR-BAL      PIC 9(10).
+
+       WORKING-STORAGE SECTION.
+
+       01 WS-EOF           PIC X VALUE 'N'.
+       01 WS-ACCNO         PIC X(12).
+       01 WS-DATE          PIC 9(10).
+       01 WS-CURR-DATE     PIC 9(10).
+       01 WS-DUE-DATE      PIC 9(10).
+       01 WS-LATE-DATE      PIC 9(10).
+       01 WS-DATE-INT      PIC 9(3).
+       01 WS-BILL-DATE     PIC 9(8).
+       PROCEDURE DIVISION.
+
+       MAIN-LOGIC.
+
+           OPEN INPUT TXNFILE
+           OPEN I-O ACCFILE
+           OPEN I-O CARDFILE
+
+           PERFORM UNTIL WS-EOF = 'Y'
+
+               READ TXNFILE
+                   AT END
+                       MOVE 'Y' TO WS-EOF
+                   NOT AT END
+                       PERFORM PROCESS-TXN
+               END-READ
+
+           END-PERFORM
+
+           CLOSE TXNFILE ACCFILE CARDFILE
+
+           STOP RUN.
+
+      *----------------------------------------------------------------*
+       PROCESS-TXN.
+
+      * EXTRACT ACCOUNT NO FROM TXNID (FIRST 12 DIGITS)
+           MOVE TXN-ID(1:12) TO WS-ACCNO
+
+      * READ ACCOUNT FILE
+           MOVE WS-ACCNO TO ACCNO
+           READ ACCFILE INVALID KEY
+               DISPLAY 'ACCID NOT FOUND'
+               GO TO END-PROC
+           END-READ
+
+      * READ CARD FILE USING CARDNO
+           READ CARDFILE INVALID KEY
+               DISPLAY 'CARDNO NOT FOUND'
+               GO TO END-PROC
+           END-READ
+           MOVE BILL-DATE(7:4) TO WS-BILL-DATE(1:4)
+           MOVE BILL-DATE(4:2) TO WS-BILL-DATE(5:2)
+           MOVE BILL-DATE(1:2) TO WS-BILL-DATE(7:2)
+           MOVE 0 TO WS-DATE-INT
+           MOVE FUNCTION CURRENT-DATE TO WS-CURR-DATE
+           COMPUTE WS-DATE-INT = FUNCTION INTEGER-OF-DATE(WS-BILL-DATE)
+           ADD 10 TO WS-DATE-INT
+           COMPUTE WS-DUE-DATE = FUNCTION DATE-OF-INTEGER(WS-DATE-INT)
+           ADD 10 TO WS-DATE-INT
+           COMPUTE WS-LATE-DATE = FUNCTION DATE-OF-INTEGER(WS-DATE-INT)
+      * PROCESS BASED ON TRANSACTION TYPE
+           EVALUATE TXN-TYPE
+
+               WHEN 'PURCHASE  '
+                   ADD TXN-AMT TO PUR-PRINC
+                   IF WS-DUE-DATE < WS-CURR-DATE
+                        COMPUTE PUR-INT = 0.1 * PUR-PRINC
+                   END-IF
+                   IF WS-LATE-DATE < WS-CURR-DATE
+                        COMPUTE PUR-LATE = PUR-LATE + 100
+                   END-IF
+                   COMPUTE PUR-TOTAL = PUR-PRINC + PUR-INT + PUR-LATE
+                                       + PUR-TOTAL
+               WHEN 'CASH WD   '
+                   ADD TXN-AMT TO CASH-PRINC
+                   IF WS-DUE-DATE < WS-CURR-DATE
+                        COMPUTE CASH-INT = 0.1 * CASH-PRINC
+                   END-IF
+                   IF WS-LATE-DATE < WS-CURR-DATE
+                        COMPUTE CASH-LATE = CASH-LATE + 100
+                   END-IF
+              COMPUTE CASH-TOTAL = CASH-PRINC + CASH-INT + CASH-LATE
+                                   + CASH-TOTAL
+      *        WHEN 'PAY       '
+      *            MOVE ZERO TO CURR-BAL PUR-PRINC  CASH-PRINC
+      *                                  PUR-TOTAL  CASH-TOTAL
+      *                                  CURR-BAL   CURR-BAL
+      *        WHEN 'MIN       '
+      *            COMPUTE MIN-DUE = PUR-LATE + CASH-LATE + EMI-LATE
+      *                              PUR-INT + CASH-INT +   EMI-INT
+      *            IF MIN-DUE = TXN-AMT
+      *            MOVE ZERO TO  PUR-LATE  CASH-LATE EMI-LATE
+      *                          PUR-INT CASH-INT    EMI-INT
+      *            ELSE
+      *            SUBTRACT MIN-DUE FROM TXN-AMT
+      *            SUBTRACT TXN-AMT FROM PUR-PRINC PUR-TOTAL CURR-BAL
+      *            END-IF
+           END-EVALUATE
+           IF TXN-TYPE(1:3) = 'EMI'
+                   MOVE TXN-TYPE(4:1) TO EMI-TENURE
+                   ADD TXN-AMT TO EMI-PRINC
+                   IF WS-DUE-DATE < WS-CURR-DATE
+                        COMPUTE EMI-INT = 0.1 * EMI-PRINC
+                   END-IF
+                   IF WS-LATE-DATE < WS-CURR-DATE
+                        COMPUTE EMI-LATE = EMI-LATE + 100
+                   END-IF
+                   COMPUTE EMI-TOTAL = EMI-PRINC + EMI-INT + EMI-LATE
+                                       + EMI-TOTAL
+           END-IF
+           COMPUTE CURR-BAL = PUR-TOTAL + CASH-TOTAL + EMI-TOTAL
+      * REWRITE UPDATED CARD RECORD
+           REWRITE CARD-REC INVALID KEY
+               DISPLAY 'ERROR UPDATING CARD FILE'
+           END-REWRITE.
+
+       END-PROC.
+           EXIT.
+
